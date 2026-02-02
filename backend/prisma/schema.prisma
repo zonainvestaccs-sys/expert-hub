@@ -1,0 +1,314 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  EXPERT
+}
+
+enum DepositStatus {
+  PENDING
+  CONFIRMED
+  FAILED
+  CHARGEBACK
+}
+
+/* ✅ NOVO: Recorrência no backend */
+enum RecurrenceFreq {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+/**
+ * ✅ Notificações:
+ * - Rule = configuração por expert (horários, timezone, ativo)
+ * - Notification = registros enviados (para sino/unread + histórico)
+ */
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  role         UserRole @default(EXPERT)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+
+  photoUrl String?
+
+  // ✅ PERFIL DO EXPERT (ADMIN edita / EXPERT visualiza)
+  description  String?
+  youtubeUrl   String?
+  instagramUrl String?
+  telegramUrl  String?
+  whatsappUrl  String?
+
+  // ✅ Config de Leads via Google Sheets (por expert)
+  leadsSheetId     String?
+  leadsSheetTab    String?
+  leadsSheetGid    String?
+  leadsSheetCsvUrl String?
+
+  // ✅ Config de ATIVAÇÕES via Google Sheets (por expert)
+  activationsSheetId     String?
+  activationsSheetTab    String?
+  activationsSheetGid    String?
+  activationsSheetCsvUrl String?
+
+  // ✅ Config de MÉTRICAS/RELATÓRIOS via Google Sheets (por expert)  ✅ NOVO
+  metricsSheetId     String?
+  metricsSheetTab    String?
+  metricsSheetGid    String?
+  metricsSheetCsvUrl String?
+
+  // ✅✅✅ Config de REV SAQUES via Google Sheets (por expert)  ✅ NOVO
+  revSaquesSheetId     String?
+  revSaquesSheetTab    String?
+  revSaquesSheetGid    String?
+  revSaquesSheetCsvUrl String?
+
+  leads        Lead[]
+  deposits     Deposit[]
+  metricsDaily MetricsDaily[]
+
+  // ✅ CRONOGRAMA (por expert) ✅ NOVO
+  appointments Appointment[]
+  appointmentSeries AppointmentSeries[] // ✅ NOVO
+
+  // ✅ TAGS (por expert)
+  tags      Tag[]
+  leadTags  LeadTag[]
+
+  // ✅ NOTIFICAÇÕES (por expert)
+  notificationRule ExpertNotificationRule?
+  notifications    ExpertNotification[]
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expertId String
+  expert   User @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  name  String
+  color String // ex: "#7C3AED" (hex)
+
+  leadTags LeadTag[]
+
+  @@unique([expertId, name])
+  @@index([expertId])
+}
+
+model LeadTag {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  expertId String
+  expert   User @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  // ✅ ID do lead vindo da planilha
+  leadKey String
+
+  tagId String
+  tag   Tag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([expertId, leadKey, tagId])
+  @@index([expertId, leadKey])
+  @@index([tagId])
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  expertId String
+  expert   User   @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  name   String?
+  email  String?
+  phone  String?
+  source String?
+
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  utmContent  String?
+  utmTerm     String?
+  fbclid      String?
+
+  externalId String? @unique
+
+  @@index([expertId, createdAt])
+}
+
+model Deposit {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  expertId String
+  expert   User   @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  amountCents Int
+  currency    String        @default("BRL")
+  status      DepositStatus @default(CONFIRMED)
+
+  providerTxId String? @unique
+
+  @@index([expertId, createdAt])
+  @@index([expertId, status])
+}
+
+model MetricsDaily {
+  id String @id @default(cuid())
+
+  expertId String
+  expert   User @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  day DateTime
+
+  leadsTotal         Int @default(0)
+  leadsActive        Int @default(0)
+  depositsCount      Int @default(0)
+  depositsTotalCents Int @default(0)
+
+  ftdCount     Int @default(0)
+  revCents     Int @default(0)
+  salesCents   Int @default(0)
+  salesCount   Int @default(0)
+  trafficCents Int @default(0)
+
+  source    String?
+  raw       Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([expertId, day])
+  @@index([day])
+  @@index([expertId])
+}
+
+/* -------------------- CRONOGRAMA (ATUALIZADO) -------------------- */
+
+/**
+ * ✅ NOVO: AppointmentSeries guarda a regra.
+ * As ocorrências ficam em Appointment com seriesId.
+ */
+model AppointmentSeries {
+  id        String   @id @default(cuid())
+
+  expertId String
+  expert   User @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  // "template" da série
+  title       String
+  description String?
+  location    String?
+  startAt     DateTime
+  endAt       DateTime?
+  allDay      Boolean @default(false)
+  color       String?
+
+  // regra
+  freq     RecurrenceFreq
+  interval Int @default(1)
+
+  // fim por COUNT ou UNTIL
+  endMode String   // "COUNT" | "UNTIL"
+  count   Int?
+  until   DateTime?
+
+  // semanal: 0..6 (Dom..Sáb)
+  byWeekday Int[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  appointments Appointment[]
+
+  @@index([expertId, createdAt])
+  @@index([expertId, startAt])
+}
+
+model Appointment {
+  id        String   @id @default(cuid())
+
+  expertId String
+  expert   User @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  location    String?
+
+  startAt DateTime
+  endAt   DateTime?
+  allDay  Boolean @default(false)
+
+  /// hex ou qualquer string curta (ex: "#6A5CFF")
+  color String?
+
+  // ✅ NOVO: vínculo com série (opcional)
+  seriesId String?
+  series   AppointmentSeries? @relation(fields: [seriesId], references: [id], onDelete: SetNull)
+
+  // ✅ NOVO: posição da ocorrência dentro da série (0,1,2...)
+  occurrenceIndex Int?
+
+  // ✅ NOVO: se esta ocorrência foi "mexida" individualmente (exceção)
+  isException Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expertId, startAt])
+  @@index([expertId, createdAt])
+  @@index([seriesId, startAt])
+}
+
+/* -------------------- NOTIFICAÇÕES (NOVO) -------------------- */
+
+model ExpertNotificationRule {
+  id        String   @id @default(cuid())
+  expertId  String   @unique
+  expert    User     @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  isActive  Boolean  @default(true)
+
+  /// Horários no formato "HH:mm" (ex: ["09:00","13:30","19:00"])
+  times     String[]
+
+  /// Timezone IANA (ex: "America/Sao_Paulo")
+  timezone  String   @default("America/Sao_Paulo")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expertId])
+}
+
+model ExpertNotification {
+  id        String   @id @default(cuid())
+  expertId  String
+  expert    User     @relation(fields: [expertId], references: [id], onDelete: Cascade)
+
+  title     String
+  message   String
+  kind      String   @default("ACTIVATION")
+
+  /// Referência do dia (YYYY-MM-DD) se fizer sentido (ativação do dia)
+  dateIso   String?
+
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([expertId, isRead, createdAt])
+  @@index([expertId, createdAt])
+}

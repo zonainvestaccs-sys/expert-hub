@@ -1,0 +1,43 @@
+/* src/app/globals.css */
+@import "tailwindcss";
+
+/* =========
+   BASE
+========= */
+html, body {
+  height: 100%;
+}
+
+body {
+  background: #05060b;
+  color: #fff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =========
+   PREMIUM HELPERS
+========= */
+.bg-adminbg {
+  background:
+    radial-gradient(1200px 800px at 20% 0%, rgba(77,163,255,0.14), transparent 55%),
+    radial-gradient(900px 700px at 80% 20%, rgba(124,92,255,0.12), transparent 60%),
+    radial-gradient(900px 700px at 50% 80%, rgba(255,255,255,0.04), transparent 60%),
+    linear-gradient(180deg, #05060b 0%, #070913 45%, #05060b 100%);
+}
+
+.shadow-soft {
+  box-shadow:
+    0 18px 70px rgba(0,0,0,0.45),
+    0 1px 0 rgba(255,255,255,0.06) inset;
+}
+
+.shadow-glow {
+  box-shadow:
+    0 16px 60px rgba(77,163,255,0.18),
+    0 1px 0 rgba(255,255,255,0.08) inset;
+}
+
+input[type="date"], select {
+  color-scheme: dark;
+}
