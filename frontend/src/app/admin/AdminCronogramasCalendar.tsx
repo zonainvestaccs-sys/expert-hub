@@ -4,7 +4,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import FullCalendar from '@fullcalendar/react';
-import type { DatesSetArg, EventMouseEnterArg, EventMouseLeaveArg, EventClickArg } from '@fullcalendar/core';
+import type { DatesSetArg, EventClickArg } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
@@ -63,12 +63,7 @@ function clamp(n: number, min: number, max: number) {
 // ✅ pega token como você já usa no projeto (ajuste se o seu storage for diferente)
 function getTokenSafe() {
   if (typeof window === 'undefined') return null;
-  return (
-    localStorage.getItem('token') ||
-    localStorage.getItem('access_token') ||
-    localStorage.getItem('auth_token') ||
-    null
-  );
+  return localStorage.getItem('token') || localStorage.getItem('access_token') || localStorage.getItem('auth_token') || null;
 }
 
 // ✅ base url
@@ -181,7 +176,8 @@ export default function AdminCronogramasCalendar() {
     });
   }, [items]);
 
-  const buildHover = useCallback((arg: EventMouseEnterArg) => {
+  // ✅ Tipos do FullCalendar variam por versão; aqui usamos "any" pra não quebrar build
+  const buildHover = useCallback((arg: any) => {
     const ev = arg.event;
     const start = ev.start ? new Date(ev.start) : new Date();
     const end = ev.end ? new Date(ev.end) : null;
@@ -228,7 +224,7 @@ export default function AdminCronogramasCalendar() {
   }, []);
 
   const onEventMouseEnter = useCallback(
-    (arg: EventMouseEnterArg) => {
+    (arg: any) => {
       const card = buildHover(arg);
       setHover(card);
       requestAnimationFrame(() => {
@@ -239,7 +235,7 @@ export default function AdminCronogramasCalendar() {
     [buildHover],
   );
 
-  const onEventMouseLeave = useCallback((_arg: EventMouseLeaveArg) => {
+  const onEventMouseLeave = useCallback((_arg: any) => {
     setHover(null);
     if (hoverRef.current) hoverRef.current.style.transform = `translate3d(-9999px,-9999px,0)`;
   }, []);
@@ -247,7 +243,9 @@ export default function AdminCronogramasCalendar() {
   const onEventClick = useCallback(
     (arg: EventClickArg) => {
       // click também abre (fixa) os detalhes
-      const fakeEnterArg: any = { event: arg.event, el: arg.el };
+      const fakeEnterArg: any = { event: arg.event, el: (arg as any).el ?? (arg as any).jsEvent?.target ?? null };
+      if (!fakeEnterArg.el) return;
+
       const card = buildHover(fakeEnterArg);
       setHover(card);
       requestAnimationFrame(() => {
@@ -291,9 +289,7 @@ export default function AdminCronogramasCalendar() {
       </div>
 
       {errorMsg ? (
-        <div className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-red-200 text-sm">
-          {errorMsg}
-        </div>
+        <div className="rounded-2xl border border-red-500/25 bg-red-500/10 px-4 py-3 text-red-200 text-sm">{errorMsg}</div>
       ) : null}
 
       {loading ? <div className="text-white/55 text-sm">Carregando…</div> : null}
@@ -359,7 +355,7 @@ export default function AdminCronogramasCalendar() {
           initialView="timeGridWeek"
           headerToolbar={false}
           locale={ptBrLocale}
-          firstDay={0} // ✅ Domingo primeiro (como você queria)
+          firstDay={0} // ✅ Domingo primeiro
           weekends
           nowIndicator
           selectable={false}
