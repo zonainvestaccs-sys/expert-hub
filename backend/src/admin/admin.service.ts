@@ -221,6 +221,7 @@ function buildSheetsCsvUrl(params: { sheetId: string; tab?: string | null; gid?:
 /**
  * Converte:
  * - "Jan/2026" "Janeiro/2026" "JAN/2026"
+ * - "Feb/2026" "February/2026" (✅ NOVO: inglês)
  * - "01/2026"
  * - "2026-01"
  * - "2026/01"
@@ -255,6 +256,7 @@ function parsePtMonthToKey(input: any): string {
     .trim();
 
   // "jan/2026" ou "janeiro/2026" ou "jan 2026" ou "janeiro 2026"
+  // "feb/2026" ou "february/2026" etc.
   m = low.match(/^([a-zç]+)\s*[\/ -]\s*(\d{4})$/);
   if (!m) return '';
 
@@ -262,6 +264,7 @@ function parsePtMonthToKey(input: any): string {
   const yyyy = m[2];
 
   const map: Record<string, string> = {
+    // PT
     jan: '01',
     janeiro: '01',
 
@@ -298,6 +301,43 @@ function parsePtMonthToKey(input: any): string {
 
     dez: '12',
     dezembro: '12',
+
+    // ✅ EN (abreviações e nomes completos)
+    feb: '02',
+    february: '02',
+
+    apr: '04',
+    april: '04',
+
+    may: '05',
+
+    june: '06', // jun já existe (PT/EN abreviação bate)
+    july: '07', // jul já existe (PT/EN abreviação bate)
+
+    aug: '08',
+    august: '08',
+
+    sep: '09',
+    sept: '09',
+    september: '09',
+
+    oct: '10',
+    october: '10',
+
+    nov: '11',
+    november: '11',
+
+    dec: '12',
+    december: '12',
+
+    jan: '01',
+    january: '01',
+
+    mar: '03',
+    march: '03',
+
+    jun: '06',
+    jul: '07',
   };
 
   const mm = map[mon];
