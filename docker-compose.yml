@@ -2,60 +2,80 @@ version: "3.9"
 
 services:
   backend:
-    build: ./backend
-    container_name: expert_backend
-    restart: always
+    image: expert-hub-backend:1
+
     environment:
       NODE_ENV: production
-      PORT: 3000
+      PORT: "3000"
 
-      # EXEMPLO (você vai preencher com os seus):
-      DATABASE_URL: "$$postgresql://postgres:WUX610mSna6Y@76.13.81.236:5432/experthub?schema=public"
-      JWT_SECRET: "$$2bf0044e55855b7e4d4cc56f5598629b"
+      DATABASE_URL: "postgresql://postgres:WUX610mSna6Y@76.13.81.236:5432/experthub?schema=public"
+      JWT_SECRET: "2bf0044e55855b7e4d4cc56f5598629b"
 
     volumes:
       - /opt/expert-hub/uploads:/app/uploads
+
     networks:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.apiexpert.rule=Host(`apiexpert.barretao.space`)"
-      - "traefik.http.routers.apiexpert.entrypoints=websecure"
-      - "traefik.http.routers.apiexpert.tls=true"
-      - "traefik.http.services.apiexpert.loadbalancer.server.port=3000"
+      - network_public
+
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        - "traefik.http.routers.apiexpert.rule=Host(`apiexpert.barretao.space`)"
+        - "traefik.http.routers.apiexpert.entrypoints=websecure"
+        - "traefik.http.routers.apiexpert.tls=true"
+        - "traefik.http.services.apiexpert.loadbalancer.server.port=3000"
 
   admin_frontend:
-    build: ./frontend
-    container_name: expert_admin_frontend
-    restart: always
+    image: expert-hub-admin:1
+
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: "https://apiexpert.barretao.space"
+
     networks:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.adminexpert.rule=Host(`adminexpert.barretao.space`)"
-      - "traefik.http.routers.adminexpert.entrypoints=websecure"
-      - "traefik.http.routers.adminexpert.tls=true"
-      - "traefik.http.services.adminexpert.loadbalancer.server.port=3000"
+      - network_public
+
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        - "traefik.http.routers.adminexpert.rule=Host(`adminexpert.barretao.space`)"
+        - "traefik.http.routers.adminexpert.entrypoints=websecure"
+        - "traefik.http.routers.adminexpert.tls=true"
+        - "traefik.http.services.adminexpert.loadbalancer.server.port=3000"
 
   expert_frontend:
-    build: ./expert-frontend
-    container_name: expert_expert_frontend
-    restart: always
+    image: expert-hub-expert:1
+
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: "https://apiexpert.barretao.space"
+
     networks:
-      - traefik
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.expert.rule=Host(`expert.barretao.space`)"
-      - "traefik.http.routers.expert.entrypoints=websecure"
-      - "traefik.http.routers.expert.tls=true"
-      - "traefik.http.services.expert.loadbalancer.server.port=3000"
+      - network_public
+
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: any
+      labels:
+        - "traefik.enable=true"
+        - "traefik.docker.network=network_public"
+
+        - "traefik.http.routers.expert.rule=Host(`expert.barretao.space`)"
+        - "traefik.http.routers.expert.entrypoints=websecure"
+        - "traefik.http.routers.expert.tls=true"
+        - "traefik.http.services.expert.loadbalancer.server.port=3000"
 
 networks:
-  traefik:
+  network_public:
     external: true

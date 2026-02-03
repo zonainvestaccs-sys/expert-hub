@@ -10,7 +10,6 @@ import type {
   DateSelectArg,
   EventClickArg,
   EventDropArg,
-  EventResizeDoneArg,
   DateClickArg,
   EventMouseEnterArg,
   EventMouseLeaveArg,
@@ -19,7 +18,7 @@ import type {
 import type { CalendarApi } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin from '@fullcalendar/interaction';
+import interactionPlugin, { type EventResizeDoneArg } from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 
 import {
