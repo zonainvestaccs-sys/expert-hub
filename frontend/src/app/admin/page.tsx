@@ -148,10 +148,7 @@ function Avatar({
 
   return (
     <div
-      className={cx(
-        'rounded-full overflow-hidden border border-white/10 bg-white/[0.05] grid place-items-center',
-        className,
-      )}
+      className={cx('rounded-full overflow-hidden border border-white/10 bg-white/[0.05] grid place-items-center', className)}
       style={{ width: size, height: size }}
       title={email}
     >
@@ -171,14 +168,8 @@ function StackedAvatars({ experts, max = 6 }: { experts: ExpertRow[]; max?: numb
 
   return (
     <div className="flex items-center">
-      {list.map((e, idx) => (
-        <Avatar
-          key={e.id}
-          email={e.email}
-          photoUrl={e.photoUrl}
-          size={24}
-          className={cx('-ml-2 first:ml-0')}
-        />
+      {list.map((e) => (
+        <Avatar key={e.id} email={e.email} photoUrl={e.photoUrl} size={24} className={cx('-ml-2 first:ml-0')} />
       ))}
       {extra > 0 ? (
         <div
@@ -267,11 +258,7 @@ function Icon({
     return (
       <svg className={common} width="18" height="18" viewBox="0 0 24 24" fill="none">
         <path d="M16.5 21c0-3-2.5-5-5.5-5s-5.5 2-5.5 5" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
-        <path
-          d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"
-          stroke="currentColor"
-          strokeWidth="1.7"
-        />
+        <path d="M12 13a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" stroke="currentColor" strokeWidth="1.7" />
         <path d="M19 21c0-2.1-1-3.6-2.5-4.4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
       </svg>
     );
@@ -516,8 +503,16 @@ export default function AdminDashboardPage() {
       try {
         if (!token) throw new Error('Sem token');
 
-        // ✅ lista experts com foto (admin)
-        const expRes = await apiFetch<AdminExpertsResponse>('/admin/experts', { token });
+        const f = opts?.from ?? from;
+        const t = opts?.to ?? to;
+        const ex = opts?.expertId ?? expertId;
+        const gr = opts?.group ?? group;
+
+        // ✅✅✅ cache busting
+        const ts = Date.now();
+
+        // ✅ lista experts com foto (admin) — com ts pra não cachear
+        const expRes = await apiFetch<AdminExpertsResponse>(`/admin/experts?ts=${ts}`, { token });
         const only = Array.isArray(expRes?.items) ? expRes.items : [];
         setExperts(
           only.map((x) => ({
@@ -529,18 +524,21 @@ export default function AdminDashboardPage() {
           })),
         );
 
-        const f = opts?.from ?? from;
-        const t = opts?.to ?? to;
-        const ex = opts?.expertId ?? expertId;
-        const gr = opts?.group ?? group;
+        // ✅✅✅ Overview + Series — com ts
+        const urlOverview =
+          `/admin/overview?from=${encodeURIComponent(f)}` +
+          `&to=${encodeURIComponent(t)}` +
+          `&expertId=${encodeURIComponent(ex)}` +
+          `&ts=${ts}`;
 
-        const urlOverview = `/admin/overview?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}&expertId=${encodeURIComponent(ex)}`;
-        const urlSeries = `/admin/series?from=${encodeURIComponent(f)}&to=${encodeURIComponent(t)}&group=${encodeURIComponent(gr)}&expertId=${encodeURIComponent(ex)}`;
+        const urlSeries =
+          `/admin/series?from=${encodeURIComponent(f)}` +
+          `&to=${encodeURIComponent(t)}` +
+          `&group=${encodeURIComponent(gr)}` +
+          `&expertId=${encodeURIComponent(ex)}` +
+          `&ts=${ts}`;
 
-        const [ov, se] = await Promise.all([
-          apiFetch<Overview>(urlOverview, { token }),
-          apiFetch<AdminSeriesResponse>(urlSeries, { token }),
-        ]);
+        const [ov, se] = await Promise.all([apiFetch<Overview>(urlOverview, { token }), apiFetch<AdminSeriesResponse>(urlSeries, { token })]);
 
         setOverview(ov);
         setSeries(se);
@@ -722,7 +720,10 @@ export default function AdminDashboardPage() {
                         type="date"
                         value={fromDraft}
                         onChange={(e) => setFromDraft(e.target.value)}
-                        className={cx('w-full h-10 rounded-xl border border-white/10 bg-black/30', 'px-3 text-white/85 text-sm outline-none focus:border-white/20')}
+                        className={cx(
+                          'w-full h-10 rounded-xl border border-white/10 bg-black/30',
+                          'px-3 text-white/85 text-sm outline-none focus:border-white/20',
+                        )}
                       />
                     </div>
                     <div className="col-span-6">
@@ -731,7 +732,10 @@ export default function AdminDashboardPage() {
                         type="date"
                         value={toDraft}
                         onChange={(e) => setToDraft(e.target.value)}
-                        className={cx('w-full h-10 rounded-xl border border-white/10 bg-black/30', 'px-3 text-white/85 text-sm outline-none focus:border-white/20')}
+                        className={cx(
+                          'w-full h-10 rounded-xl border border-white/10 bg-black/30',
+                          'px-3 text-white/85 text-sm outline-none focus:border-white/20',
+                        )}
                       />
                     </div>
                   </div>
@@ -742,7 +746,10 @@ export default function AdminDashboardPage() {
                       <select
                         value={groupDraft}
                         onChange={(e) => setGroupDraft(e.target.value as any)}
-                        className={cx('w-full h-10 rounded-xl border border-white/10 bg-black/30', 'px-3 text-white/85 text-sm outline-none focus:border-white/20')}
+                        className={cx(
+                          'w-full h-10 rounded-xl border border-white/10 bg-black/30',
+                          'px-3 text-white/85 text-sm outline-none focus:border-white/20',
+                        )}
                       >
                         <option value="day">Diário</option>
                         <option value="week">Semanal</option>
@@ -761,7 +768,11 @@ export default function AdminDashboardPage() {
                         key={p.k}
                         type="button"
                         onClick={() => setPreset(p.k as any)}
-                        className={cx('h-9 px-3 rounded-xl border border-white/10', 'bg-white/[0.03] hover:bg-white/[0.06] transition', 'text-white/75 text-sm')}
+                        className={cx(
+                          'h-9 px-3 rounded-xl border border-white/10',
+                          'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                          'text-white/75 text-sm',
+                        )}
                       >
                         {p.label}
                       </button>
@@ -773,7 +784,8 @@ export default function AdminDashboardPage() {
                   <div className="text-white/55 text-xs">
                     Selecionado:{' '}
                     <span className="text-white/75">
-                      {ptDate(fromDraft)} — {ptDate(toDraft)} • {groupDraft === 'day' ? 'Diário' : groupDraft === 'week' ? 'Semanal' : 'Mensal'}
+                      {ptDate(fromDraft)} — {ptDate(toDraft)} •{' '}
+                      {groupDraft === 'day' ? 'Diário' : groupDraft === 'week' ? 'Semanal' : 'Mensal'}
                     </span>
                   </div>
 
@@ -781,7 +793,11 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={() => setOpenPeriod(false)}
-                      className={cx('h-10 px-3 rounded-xl border border-white/10', 'bg-white/[0.02] hover:bg-white/[0.05] transition', 'text-white/75 text-sm')}
+                      className={cx(
+                        'h-10 px-3 rounded-xl border border-white/10',
+                        'bg-white/[0.02] hover:bg-white/[0.05] transition',
+                        'text-white/75 text-sm',
+                      )}
                     >
                       Fechar
                     </button>
@@ -789,7 +805,12 @@ export default function AdminDashboardPage() {
                     <button
                       type="button"
                       onClick={applyFilters}
-                      className={cx('h-10 px-4 rounded-xl border border-white/10', 'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white', 'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition', 'text-sm font-medium')}
+                      className={cx(
+                        'h-10 px-4 rounded-xl border border-white/10',
+                        'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
+                        'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
+                        'text-sm font-medium',
+                      )}
                     >
                       Aplicar
                     </button>
@@ -835,7 +856,10 @@ export default function AdminDashboardPage() {
                     value={expertSearch}
                     onChange={(e) => setExpertSearch(e.target.value)}
                     placeholder="Buscar por e-mail..."
-                    className={cx('w-full h-10 rounded-xl border border-white/10 bg-black/30', 'px-3 text-white/85 text-sm outline-none focus:border-white/20')}
+                    className={cx(
+                      'w-full h-10 rounded-xl border border-white/10 bg-black/30',
+                      'px-3 text-white/85 text-sm outline-none focus:border-white/20',
+                    )}
                   />
 
                   <div className="max-h-[320px] overflow-auto pr-1">
@@ -895,7 +919,11 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={() => setOpenExpert(false)}
-                    className={cx('h-10 px-3 rounded-xl border border-white/10', 'bg-white/[0.02] hover:bg-white/[0.05] transition', 'text-white/75 text-sm')}
+                    className={cx(
+                      'h-10 px-3 rounded-xl border border-white/10',
+                      'bg-white/[0.02] hover:bg-white/[0.05] transition',
+                      'text-white/75 text-sm',
+                    )}
                   >
                     Fechar
                   </button>
@@ -903,7 +931,12 @@ export default function AdminDashboardPage() {
                   <button
                     type="button"
                     onClick={applyFilters}
-                    className={cx('h-10 px-4 rounded-xl border border-white/10', 'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white', 'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition', 'text-sm font-medium')}
+                    className={cx(
+                      'h-10 px-4 rounded-xl border border-white/10',
+                      'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
+                      'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
+                      'text-sm font-medium',
+                    )}
                   >
                     Aplicar
                   </button>
@@ -915,7 +948,11 @@ export default function AdminDashboardPage() {
             <button
               onClick={() => loadAll()}
               type="button"
-              className={cx('h-10 px-4 rounded-xl border border-white/10', 'bg-white/[0.03] hover:bg-white/[0.06] transition', 'text-white/85 text-sm font-medium flex items-center gap-2')}
+              className={cx(
+                'h-10 px-4 rounded-xl border border-white/10',
+                'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                'text-white/85 text-sm font-medium flex items-center gap-2',
+              )}
             >
               <span className="text-white/70">
                 <Icon name="refresh" />
@@ -992,10 +1029,7 @@ export default function AdminDashboardPage() {
                 </div>
 
                 <div className="col-span-12 md:col-span-6">
-                  <ConversionCard
-                    leadsTotal={Number(overview?.leads?.total ?? 0)}
-                    ftdCount={Number(overview?.deposits?.ftdCount ?? 0)}
-                  />
+                  <ConversionCard leadsTotal={Number(overview?.leads?.total ?? 0)} ftdCount={Number(overview?.deposits?.ftdCount ?? 0)} />
                 </div>
               </div>
 
