@@ -38,7 +38,12 @@ export type ExpertOverview = {
 };
 
 export async function fetchExpertOverview(token: string, from: string, to: string) {
-  const url = `/expert/overview?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`;
+  const ts = Date.now();
+  const url =
+    `/expert/overview?from=${encodeURIComponent(from)}` +
+    `&to=${encodeURIComponent(to)}` +
+    `&ts=${ts}`;
+
   return apiFetch<ExpertOverview>(url, { token });
 }
 
@@ -48,9 +53,13 @@ export async function fetchExpertSeries(
   to: string,
   group: 'day' | 'week' | 'month' = 'day',
 ) {
+  const ts = Date.now();
   const url =
-    `/expert/series?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` +
-    `&group=${encodeURIComponent(group)}`;
+    `/expert/series?from=${encodeURIComponent(from)}` +
+    `&to=${encodeURIComponent(to)}` +
+    `&group=${encodeURIComponent(group)}` +
+    `&ts=${ts}`;
+
   return apiFetch<ExpertSeriesResponse>(url, { token });
 }
 
@@ -100,6 +109,9 @@ export async function fetchExpertLeads(
   qs.set('pageSize', String(pageSize));
   if (params.q) qs.set('q', params.q);
 
+  // ✅ evita resposta cacheada por proxy/cdn
+  qs.set('ts', String(Date.now()));
+
   return apiFetch<ExpertLeadsResponse>(`/expert/leads?${qs.toString()}`, { token });
 }
 
@@ -107,8 +119,8 @@ export async function fetchExpertLeads(
 
 export type ExpertActivationItem = {
   id: string;
-  date: string;       // ISO yyyy-mm-dd
-  dateLabel: string;  // label original (se vier)
+  date: string; // ISO yyyy-mm-dd
+  dateLabel: string; // label original (se vier)
   activation: string;
   description: string;
   ftd: number;
@@ -155,6 +167,9 @@ export async function fetchExpertActivations(
   if (params.sortBy) qs.set('sortBy', params.sortBy);
   if (params.sortDir) qs.set('sortDir', params.sortDir);
   if (params.fresh) qs.set('fresh', '1');
+
+  // ✅ evita resposta cacheada por proxy/cdn
+  qs.set('ts', String(Date.now()));
 
   return apiFetch<ExpertActivationsResponse>(`/expert/activations?${qs.toString()}`, { token });
 }
