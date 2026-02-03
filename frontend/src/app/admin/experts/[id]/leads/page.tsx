@@ -692,7 +692,7 @@ export default function AdminExpertLeadsPage() {
                               </span>
 
                               {wppDigits ? (
-                                <Sensitive placeholder={null}>
+                                <Sensitive placeholder="">
                                   <a
                                     href={wppLink}
                                     target="_blank"
