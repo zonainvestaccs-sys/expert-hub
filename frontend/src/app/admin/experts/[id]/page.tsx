@@ -404,7 +404,7 @@ function previousMonthRangeFrom(fromIso: string) {
     y = y0 - 1;
   }
 
-  const end = new Date(Date.UTC(y, mm, 0)); // último dia do mês anterior (mm é 1..12 aqui, Date.UTC aceita month 0..11, mas usamos truque com dia 0)
+  const end = new Date(Date.UTC(y, mm, 0)); // último dia do mês anterior
   const from = `${y}-${String(mm).padStart(2, '0')}-01`;
   const to = `${y}-${String(mm).padStart(2, '0')}-${String(end.getUTCDate()).padStart(2, '0')}`;
 
@@ -1579,13 +1579,7 @@ export default function AdminExpertDetailPage() {
         </div>
 
         <div className="mt-4">
-          <Sensitive
-            placeholder={
-              <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-6 text-white/60 text-sm text-center">
-                Dados ocultos
-              </div>
-            }
-          >
+          <Sensitive placeholder="Dados ocultos">
             <ExpertLineChart
               points={chartPoints}
               defaultEnabled={{
