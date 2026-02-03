@@ -10,15 +10,11 @@ import type {
   DateSelectArg,
   EventClickArg,
   EventDropArg,
-  DateClickArg,
-  EventMouseEnterArg,
-  EventMouseLeaveArg,
-  EventContentArg,
 } from '@fullcalendar/core';
 import type { CalendarApi } from '@fullcalendar/core';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
-import interactionPlugin, { type EventResizeDoneArg } from '@fullcalendar/interaction';
+import interactionPlugin from '@fullcalendar/interaction';
 import ptBrLocale from '@fullcalendar/core/locales/pt-br';
 
 import {
@@ -72,6 +68,17 @@ import { ZI_FC_CSS } from '@/components/cronogramaCalendarStyles';
 function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(' ');
 }
+
+/**
+ * ✅ Compat types (FullCalendar)
+ * Algumas versões do FullCalendar não exportam certos Args no @fullcalendar/core.
+ * Para não quebrar build por versão, usamos aliases locais.
+ */
+type DateClickArg = any;
+type EventMouseEnterArg = any;
+type EventMouseLeaveArg = any;
+type EventContentArg = any;
+type EventResizeDoneArg = any;
 
 /* ---------------------- helpers ---------------------- */
 
