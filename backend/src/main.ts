@@ -5,40 +5,30 @@ import { AppModule } from './app.module';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as path from 'path';
 
-function parseCorsOrigins(): string[] {
-  // Se você setar CORS_ORIGINS na VPS, isso vira a fonte principal.
-  // Ex: CORS_ORIGINS=https://expert.barretao.space,https://adminexpert.barretao.space
-  const fromEnv = process.env.CORS_ORIGINS?.split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  if (fromEnv && fromEnv.length > 0) return fromEnv;
-
-  // Fallback (dev + produção) caso você NÃO use env:
-  return [
-    'http://localhost:3002', // admin-frontend (dev)
-    'http://localhost:3003', // expert-frontend (dev)
-    'https://expert.barretao.space',
-    'https://adminexpert.barretao.space',
-  ];
-}
-
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
-  // importante quando está atrás de proxy (Traefik), ajuda em cookies/secure e IP real
-  app.set('trust proxy', 1);
+  const allowedOrigins = new Set<string>([
+    // DEV
+    'http://localhost:3002', // admin-frontend (dev)
+    'http://localhost:3003', // expert-frontend (dev)
+    'http://localhost:3000', // api local (se precisar)
 
-  const allowedOrigins = parseCorsOrigins();
+    // PROD
+    'https://expert.barretao.space',
+    'https://adminexpert.barretao.space',
+  ]);
 
   app.enableCors({
     origin: (origin, callback) => {
-      // Alguns clients (healthchecks, curl, server-to-server) podem não mandar Origin
+      // origin undefined acontece em curl/postman/healthchecks (sem header Origin)
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) return callback(null, true);
+      if (allowedOrigins.has(origin)) {
+        return callback(null, true);
+      }
 
-      return callback(new Error(`CORS blocked for origin: ${origin}`), false);
+      return callback(new Error(`Not allowed by CORS: ${origin}`), false);
     },
     credentials: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
