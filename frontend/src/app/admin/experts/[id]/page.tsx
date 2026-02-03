@@ -1327,7 +1327,7 @@ export default function AdminExpertDetailPage() {
                   </div>
 
                   {hasAnyTopIcon ? (
-                    <Sensitive placeholder={null}>
+                    <Sensitive placeholder="">
                       <div className="flex items-center gap-2">
                         <SocialIcon kind="youtube" href={topYoutube} title="Abrir YouTube" />
                         <SocialIcon kind="instagram" href={topInstagram} title="Abrir Instagram" />
