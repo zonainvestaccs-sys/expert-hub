@@ -1,20 +1,20 @@
-FROM node:20-alpine
+FROM node:20-slim
 
 WORKDIR /app
 
-# Prisma precisa de openssl no alpine
-RUN apk add --no-cache openssl
-
+# 1) instala dependências
 COPY package*.json ./
 RUN npm ci
 
-# Copia schema do prisma e gera o client ANTES do build
+# 2) copia o prisma e gera o client ANTES do build
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# Agora copia o resto do código e builda o Nest
+# 3) copia o resto e builda
 COPY . .
 RUN npm run build
 
 EXPOSE 3000
-CMD ["node", "dist/main.js"]
+
+# 4) aplica migrations e inicia
+CMD ["sh","-c","npx prisma migrate deploy && node dist/main.js"]
