@@ -215,6 +215,7 @@ function tzNowParts(timeZone: string) {
 /**
  * Converte:
  * - "Jan/2026" "Janeiro/2026" "JAN/2026"
+ * - "Feb/2026" "February/2026"
  * - "01/2026"
  * - "2026-01"
  * - "2026/01"
@@ -242,7 +243,11 @@ function parsePtMonthToKey(input: any): string {
     return `${yyyy}-${mm}`;
   }
 
-  const low = raw.toLowerCase().replace(/\./g, '').replace(/\s+/g, ' ').trim();
+  const low = raw
+    .toLowerCase()
+    .replace(/\./g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
 
   // "jan/2026" ou "janeiro/2026" ou "jan 2026" ou "janeiro 2026"
   m = low.match(/^([a-zç]+)\s*[\/ -]\s*(\d{4})$/);
@@ -251,7 +256,9 @@ function parsePtMonthToKey(input: any): string {
   const mon = m[1];
   const yyyy = m[2];
 
+  // ✅ PT + EN (abreviações e nomes completos)
   const map: Record<string, string> = {
+    // PT
     jan: '01',
     janeiro: '01',
 
@@ -288,6 +295,28 @@ function parsePtMonthToKey(input: any): string {
 
     dez: '12',
     dezembro: '12',
+
+    // EN (abreviações)
+    feb: '02',
+    apr: '04',
+    may: '05',
+    aug: '08',
+    sep: '09',
+    oct: '10',
+    dec: '12',
+
+    // EN (nomes completos)
+    january: '01',
+    february: '02',
+    march: '03',
+    april: '04',
+    june: '06',
+    july: '07',
+    august: '08',
+    september: '09',
+    october: '10',
+    november: '11',
+    december: '12',
   };
 
   const mm = map[mon];
