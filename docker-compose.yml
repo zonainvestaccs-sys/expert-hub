@@ -28,6 +28,7 @@ services:
         - "traefik.http.routers.apiexpert.rule=Host(`apiexpert.barretao.space`)"
         - "traefik.http.routers.apiexpert.entrypoints=websecure"
         - "traefik.http.routers.apiexpert.tls=true"
+        - "traefik.http.routers.apiexpert.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.apiexpert.loadbalancer.server.port=3000"
 
   admin_frontend:
@@ -51,6 +52,7 @@ services:
         - "traefik.http.routers.adminexpert.rule=Host(`adminexpert.barretao.space`)"
         - "traefik.http.routers.adminexpert.entrypoints=websecure"
         - "traefik.http.routers.adminexpert.tls=true"
+        - "traefik.http.routers.adminexpert.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.adminexpert.loadbalancer.server.port=3000"
 
   expert_frontend:
@@ -74,6 +76,7 @@ services:
         - "traefik.http.routers.expert.rule=Host(`expert.barretao.space`)"
         - "traefik.http.routers.expert.entrypoints=websecure"
         - "traefik.http.routers.expert.tls=true"
+        - "traefik.http.routers.expert.tls.certresolver=letsencryptresolver"
         - "traefik.http.services.expert.loadbalancer.server.port=3000"
 
 networks:
