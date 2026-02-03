@@ -10,8 +10,8 @@ services:
       PORT: 3000
 
       # EXEMPLO (você vai preencher com os seus):
-      DATABASE_URL: '$postgresql://postgres:WUX610mSna6Y@76.13.81.236:5432/experthub?schema=public'
-      JWT_SECRET: '$2bf0044e55855b7e4d4cc56f5598629b'
+      DATABASE_URL: "$$postgresql://postgres:WUX610mSna6Y@76.13.81.236:5432/experthub?schema=public"
+      JWT_SECRET: "$$2bf0044e55855b7e4d4cc56f5598629b"
 
     volumes:
       - /opt/expert-hub/uploads:/app/uploads
