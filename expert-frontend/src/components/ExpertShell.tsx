@@ -148,7 +148,13 @@ function normalizeNotif(payload: any): ExpertNotification | null {
   // ✅ origem
   const explicitSource = String(payload.source ?? '').toLowerCase();
   const source: 'server' | 'local' =
-    explicitSource === 'local' ? 'local' : explicitSource === 'server' ? 'server' : id.startsWith('local:') ? 'local' : 'server';
+    explicitSource === 'local'
+      ? 'local'
+      : explicitSource === 'server'
+        ? 'server'
+        : id.startsWith('local:')
+          ? 'local'
+          : 'server';
 
   return {
     id,
@@ -327,7 +333,9 @@ function ExpertShellInner({
         token,
       });
 
-      const serverItems = (res?.items || []).map((x: any) => normalizeNotif({ ...x, source: 'server' })).filter(Boolean) as ExpertNotification[];
+      const serverItems = (res?.items || [])
+        .map((x: any) => normalizeNotif({ ...x, source: 'server' }))
+        .filter(Boolean) as ExpertNotification[];
 
       // ✅ mantém locais atuais (que ainda estão dentro da janela de 24h)
       setNotifs((prev) => {
@@ -846,7 +854,7 @@ function ExpertShellInner({
                   {false ? (
                     <button
                       type="button"
-                      onClick={() => setSensitiveHidden((v) => !v)}
+                      onClick={() => setSensitiveHidden(!sensitiveHidden)}
                       className={cx(
                         'h-10 w-10 rounded-2xl border border-white/10 bg-white/[0.03]',
                         'hover:bg-white/[0.06] hover:border-white/20 transition grid place-items-center',
