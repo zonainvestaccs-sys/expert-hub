@@ -1,20 +1,17 @@
-FROM node:20-slim
+FROM node:20-alpine
 
 WORKDIR /app
 
-# 1) instala dependências
 COPY package*.json ./
-RUN npm ci
+RUN npm ci --include=dev
 
-# 2) copia o prisma e gera o client ANTES do build
+# precisa copiar o schema antes de gerar
 COPY prisma ./prisma
 RUN npx prisma generate
 
-# 3) copia o resto e builda
 COPY . .
+
 RUN npm run build
 
 EXPOSE 3000
-
-# 4) aplica migrations e inicia
-CMD ["sh","-c","npx prisma migrate deploy && node dist/main.js"]
+CMD ["npm","run","start:prod"]
