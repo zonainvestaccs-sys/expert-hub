@@ -178,17 +178,17 @@ export class AdminController {
   }
 
   // =========================
-  // ✅✅✅ UTILIDADES (ADMIN) - PASTAS
+  // ✅✅✅ UTILIDADES - PASTAS
   // =========================
 
   @Get('utility-folders')
   @Roles(UserRole.ADMIN)
   async listUtilityFolders() {
     try {
-      // se você estiver usando versão Drive-like: listUtilityFoldersTree()
-      // se não: listUtilityFolders()
-      return await (this.adminService as any).listUtilityFoldersTree?.()
-        ?? await (this.adminService as any).listUtilityFolders();
+      // se existir listUtilityFoldersTree usa ele, senão listUtilityFolders
+      const svc: any = this.adminService as any;
+      if (typeof svc.listUtilityFoldersTree === 'function') return await svc.listUtilityFoldersTree();
+      return await svc.listUtilityFolders();
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
@@ -198,8 +198,8 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async createUtilityFolder(@Body() body: any) {
     try {
-      // drive-like suporta parentId opcional
-      return await (this.adminService as any).createUtilityFolder({
+      const svc: any = this.adminService as any;
+      return await svc.createUtilityFolder({
         name: String(body?.name || ''),
         parentId: body?.parentId ? String(body.parentId) : null,
       });
@@ -212,7 +212,8 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async updateUtilityFolder(@Param('id') id: string, @Body() body: any) {
     try {
-      return await (this.adminService as any).updateUtilityFolder(id, {
+      const svc: any = this.adminService as any;
+      return await svc.updateUtilityFolder(id, {
         name: String(body?.name || ''),
         parentId: body?.parentId ? String(body.parentId) : null,
       });
@@ -225,21 +226,20 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async deleteUtilityFolder(@Param('id') id: string) {
     try {
-      return await (this.adminService as any).deleteUtilityFolder(id);
+      const svc: any = this.adminService as any;
+      return await svc.deleteUtilityFolder(id);
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
   }
 
-  // (opcional) reorder folders (drive-like)
   @Post('utility-folders/reorder')
   @Roles(UserRole.ADMIN)
   async reorderFolders(@Body() body: any) {
     try {
       const orderedIds = Array.isArray(body?.orderedIds) ? body.orderedIds.map(String) : [];
-      if ((this.adminService as any).reorderFolders) {
-        return await (this.adminService as any).reorderFolders(orderedIds);
-      }
+      const svc: any = this.adminService as any;
+      if (typeof svc.reorderFolders === 'function') return await svc.reorderFolders(orderedIds);
       return { ok: true };
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
@@ -247,7 +247,7 @@ export class AdminController {
   }
 
   // =========================
-  // ✅✅✅ UTILIDADES (ADMIN) - TAGS
+  // ✅✅✅ UTILIDADES - TAGS
   // =========================
 
   @Get('utility-tags')
@@ -297,10 +297,9 @@ export class AdminController {
   }
 
   // =========================
-  // ✅✅✅ UTILIDADES (ADMIN) - LIST / CREATE / UPDATE / DELETE / REORDER
+  // ✅✅✅ UTILIDADES - LIST / CREATE / UPDATE / DELETE / REORDER
   // =========================
 
-  // GET /admin/utilities?folderId=&tagIds=a,b,c&q=
   @Get('utilities')
   @Roles(UserRole.ADMIN)
   async listUtilities(
@@ -324,8 +323,6 @@ export class AdminController {
     }
   }
 
-  // POST /admin/utilities (multipart/form-data)
-  // fields: name, url, description?, folderId?, tagIds? (csv), file?
   @Post('utilities')
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
@@ -356,8 +353,6 @@ export class AdminController {
     }
   }
 
-  // PATCH /admin/utilities/:id (multipart/form-data)
-  // fields: name?, url?, description?, folderId?, tagIds? (csv), file? (substitui)
   @Patch('utilities/:id')
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
@@ -403,9 +398,6 @@ export class AdminController {
     }
   }
 
-  // ✅ Reorder (drag & drop)
-  // POST /admin/utilities/reorder
-  // body: { orderedIds: string[] }
   @Post('utilities/reorder')
   @Roles(UserRole.ADMIN)
   async reorderUtilities(@Body() body: any) {
@@ -417,15 +409,13 @@ export class AdminController {
     }
   }
 
-  // (opcional) mover item para outra pasta (drag entre pastas)
   @Post('utilities/:id/move')
   @Roles(UserRole.ADMIN)
   async moveUtility(@Param('id') id: string, @Body() body: any) {
     try {
       const folderId = body?.folderId != null ? String(body.folderId) : null;
-      if ((this.adminService as any).moveUtility) {
-        return await (this.adminService as any).moveUtility(id, folderId);
-      }
+      const svc: any = this.adminService as any;
+      if (typeof svc.moveUtility === 'function') return await svc.moveUtility(id, folderId);
       return { ok: true };
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
