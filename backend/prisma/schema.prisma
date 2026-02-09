@@ -315,14 +315,66 @@ model ExpertNotification {
 
 /* -------------------- ✅ UTILIDADES (ADMIN) -------------------- */
 
+model UtilityFolder {
+  id         String   @id @default(cuid())
+  name       String
+  orderIndex Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  links UtilityLink[]
+
+  @@unique([name])
+  @@index([orderIndex])
+}
+
+model UtilityTag {
+  id        String   @id @default(cuid())
+  name      String
+  color     String?  // opcional (ex: "#6A5CFF")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  links UtilityLinkTag[]
+
+  @@unique([name])
+  @@index([name])
+}
+
+model UtilityLinkTag {
+  utilityId String
+  tagId     String
+
+  utility UtilityLink @relation(fields: [utilityId], references: [id], onDelete: Cascade)
+  tag     UtilityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@id([utilityId, tagId])
+  @@index([tagId])
+}
+
 model UtilityLink {
   id          String   @id @default(cuid())
   name        String
   url         String
   description String?
   imageUrl    String?
+
+  // ✅ organização
+  folderId    String?
+  folder      UtilityFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+
+  // ✅ ordenação (drag & drop)
+  orderIndex  Int @default(0)
+
+  tags        UtilityLinkTag[]
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([createdAt])
+  @@index([orderIndex])
+  @@index([folderId, orderIndex])
 }
+

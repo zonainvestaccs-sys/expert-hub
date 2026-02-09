@@ -27,9 +27,9 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // =========================
-  // ✅ OVERVIEW GERAL
-  // GET /admin/overview?from&to&expertId
+  // ✅ OVERVIEW / SERIES / EXPERTS ... (mantém igual o seu projeto)
   // =========================
+
   @Get('overview')
   @Roles(UserRole.ADMIN)
   async overview(
@@ -44,11 +44,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ SÉRIE (ADMIN) - CONSOLIDADO OU POR EXPERT
-  // GET /admin/series?from&to&group=day|week|month&expertId=ALL|<id>
-  // ✅ Retorna points com: revBRL, depositsBRL, leadsTotal, ftdCount
-  // =========================
   @Get('series')
   @Roles(UserRole.ADMIN)
   async series(
@@ -64,10 +59,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ LISTAR EXPERTS
-  // GET /admin/experts
-  // =========================
   @Get('experts')
   @Roles(UserRole.ADMIN)
   async listExperts() {
@@ -78,10 +69,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ CRIAR EXPERT
-  // POST /admin/experts
-  // =========================
   @Post('experts')
   @Roles(UserRole.ADMIN)
   async createExpert(@Body() body: any) {
@@ -92,10 +79,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ OVERVIEW DO EXPERT
-  // GET /admin/experts/:expertId/overview?from&to
-  // =========================
   @Get('experts/:expertId/overview')
   @Roles(UserRole.ADMIN)
   async expertOverview(
@@ -110,10 +93,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ SÉRIE DO EXPERT
-  // GET /admin/experts/:expertId/series?from&to&group=day|week|month
-  // =========================
   @Get('experts/:expertId/series')
   @Roles(UserRole.ADMIN)
   async expertSeries(
@@ -129,10 +108,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ LEADS DO EXPERT
-  // GET /admin/experts/:expertId/leads?from&to&page&pageSize&q&status&sortBy&sortDir
-  // =========================
   @Get('experts/:expertId/leads')
   @Roles(UserRole.ADMIN)
   async expertLeads(
@@ -162,10 +137,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ EDITAR EXPERT
-  // PATCH /admin/experts/:expertId
-  // =========================
   @Patch('experts/:expertId')
   @Roles(UserRole.ADMIN)
   async updateExpert(@Param('expertId') expertId: string, @Body() body: any) {
@@ -176,11 +147,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ TROCAR SENHA EXPERT
-  // PATCH /admin/experts/:expertId/password
-  // body: { password }
-  // =========================
   @Patch('experts/:expertId/password')
   @Roles(UserRole.ADMIN)
   async updateExpertPassword(@Param('expertId') expertId: string, @Body() body: any) {
@@ -191,10 +157,6 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅ UPLOAD FOTO EXPERT
-  // POST /admin/experts/:expertId/photo (multipart/form-data "file")
-  // =========================
   @Post('experts/:expertId/photo')
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
@@ -212,24 +174,129 @@ export class AdminController {
   }
 
   // =========================
-  // ✅✅✅ UTILIDADES (ADMIN)
-  // GET /admin/utilities
+  // ✅✅✅ UTILIDADES (ADMIN) - PASTAS
   // =========================
-  @Get('utilities')
+
+  @Get('utility-folders')
   @Roles(UserRole.ADMIN)
-  async listUtilities() {
+  async listUtilityFolders() {
     try {
-      return await this.adminService.listUtilities();
+      return await this.adminService.listUtilityFolders();
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Post('utility-folders')
+  @Roles(UserRole.ADMIN)
+  async createUtilityFolder(@Body() body: any) {
+    try {
+      return await this.adminService.createUtilityFolder({ name: String(body?.name || '') });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Patch('utility-folders/:id')
+  @Roles(UserRole.ADMIN)
+  async updateUtilityFolder(@Param('id') id: string, @Body() body: any) {
+    try {
+      return await this.adminService.updateUtilityFolder(id, { name: String(body?.name || '') });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Delete('utility-folders/:id')
+  @Roles(UserRole.ADMIN)
+  async deleteUtilityFolder(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteUtilityFolder(id);
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
   }
 
   // =========================
-  // ✅✅✅ UTILIDADES (ADMIN)
-  // POST /admin/utilities (multipart/form-data)
-  // fields: name, url, description?, file?(image)
+  // ✅✅✅ UTILIDADES (ADMIN) - TAGS
   // =========================
+
+  @Get('utility-tags')
+  @Roles(UserRole.ADMIN)
+  async listUtilityTags() {
+    try {
+      return await this.adminService.listUtilityTags();
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Post('utility-tags')
+  @Roles(UserRole.ADMIN)
+  async createUtilityTag(@Body() body: any) {
+    try {
+      return await this.adminService.createUtilityTag({
+        name: String(body?.name || ''),
+        color: body?.color ? String(body.color) : null,
+      });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Patch('utility-tags/:id')
+  @Roles(UserRole.ADMIN)
+  async updateUtilityTag(@Param('id') id: string, @Body() body: any) {
+    try {
+      return await this.adminService.updateUtilityTag(id, {
+        name: String(body?.name || ''),
+        color: body?.color ? String(body.color) : null,
+      });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  @Delete('utility-tags/:id')
+  @Roles(UserRole.ADMIN)
+  async deleteUtilityTag(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteUtilityTag(id);
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN) - LIST / CREATE / UPDATE / DELETE / REORDER
+  // =========================
+
+  // GET /admin/utilities?folderId=&tagIds=a,b,c&q=
+  @Get('utilities')
+  @Roles(UserRole.ADMIN)
+  async listUtilities(
+    @Query('folderId') folderId?: string,
+    @Query('tagIds') tagIds?: string,
+    @Query('q') q?: string,
+  ) {
+    try {
+      const tags = String(tagIds || '')
+        .split(',')
+        .map((x) => x.trim())
+        .filter(Boolean);
+
+      return await this.adminService.listUtilities({
+        folderId: folderId ? String(folderId) : '',
+        tagIds: tags,
+        q: q ? String(q) : '',
+      });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // POST /admin/utilities (multipart/form-data)
+  // fields: name, url, description?, folderId?, tagIds? (csv), file?
   @Post('utilities')
   @Roles(UserRole.ADMIN)
   @UseInterceptors(
@@ -238,16 +305,20 @@ export class AdminController {
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  async createUtility(
-    @UploadedFile() file: Express.Multer.File | undefined,
-    @Body() body: any,
-  ) {
+  async createUtility(@UploadedFile() file: Express.Multer.File | undefined, @Body() body: any) {
     try {
+      const tagIds = String(body?.tagIds || '')
+        .split(',')
+        .map((x: string) => x.trim())
+        .filter(Boolean);
+
       return await this.adminService.createUtility(
         {
           name: String(body?.name || ''),
           url: String(body?.url || ''),
           description: String(body?.description || ''),
+          folderId: String(body?.folderId || ''),
+          tagIds,
         },
         file,
       );
@@ -256,15 +327,57 @@ export class AdminController {
     }
   }
 
-  // =========================
-  // ✅✅✅ UTILIDADES (ADMIN)
-  // DELETE /admin/utilities/:id
-  // =========================
+  // PATCH /admin/utilities/:id (multipart/form-data)
+  // fields: name?, url?, description?, folderId?, tagIds? (csv), file? (substitui)
+  @Patch('utilities/:id')
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async updateUtility(@Param('id') id: string, @UploadedFile() file: Express.Multer.File | undefined, @Body() body: any) {
+    try {
+      const tagIds = String(body?.tagIds || '')
+        .split(',')
+        .map((x: string) => x.trim())
+        .filter(Boolean);
+
+      return await this.adminService.updateUtility(
+        id,
+        {
+          name: body?.name != null ? String(body.name) : undefined,
+          url: body?.url != null ? String(body.url) : undefined,
+          description: body?.description != null ? String(body.description) : undefined,
+          folderId: body?.folderId != null ? String(body.folderId) : undefined,
+          tagIds: body?.tagIds != null ? tagIds : undefined,
+        },
+        file,
+      );
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
   @Delete('utilities/:id')
   @Roles(UserRole.ADMIN)
   async deleteUtility(@Param('id') id: string) {
     try {
       return await this.adminService.deleteUtility(id);
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // PATCH /admin/utilities-reorder
+  // body: { orderedIds: string[] }
+  @Patch('utilities-reorder')
+  @Roles(UserRole.ADMIN)
+  async reorderUtilities(@Body() body: any) {
+    try {
+      const orderedIds = Array.isArray(body?.orderedIds) ? body.orderedIds.map(String) : [];
+      return await this.adminService.reorderUtilities(orderedIds);
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }

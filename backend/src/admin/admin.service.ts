@@ -1560,153 +1560,468 @@ export class AdminService {
     return total;
   }
 
-  // =========================
-  // ✅✅✅ UTILIDADES (ADMIN)
-  // =========================
+ // =========================
+// ✅✅✅ UTILIDADES (ADMIN) — PASTAS + TAGS + FILTRO + EDIT + REORDER
+// =========================
 
-  private normalizeUrl(input: any) {
-    const v = String(input ?? '').trim();
-    if (!v) return '';
-    if (v.startsWith('http://') || v.startsWith('https://')) return v;
-    return `https://${v}`;
+private normalizeUrl(input: any) {
+  const v = String(input ?? '').trim();
+  if (!v) return '';
+  if (v.startsWith('http://') || v.startsWith('https://')) return v;
+  return `https://${v}`;
+}
+
+private safeExtFromMimeOrName(file?: Express.Multer.File) {
+  const nameExt = file?.originalname ? path.extname(file.originalname) : '';
+  const ext = (nameExt || '').toLowerCase();
+
+  const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']);
+  if (allowed.has(ext)) return ext === '.jpeg' ? '.jpg' : ext;
+
+  const mime = String(file?.mimetype || '').toLowerCase();
+  if (mime.includes('png')) return '.png';
+  if (mime.includes('webp')) return '.webp';
+  if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
+
+  return '';
+}
+
+private toUtilityDto(row: any) {
+  const tags = (row?.tags || []).map((t: any) => ({
+    id: String(t?.tag?.id),
+    name: String(t?.tag?.name || ''),
+    color: t?.tag?.color ?? null,
+  }));
+
+  return {
+    id: String(row?.id),
+    name: String(row?.name || ''),
+    url: String(row?.url || ''),
+    description: row?.description ?? null,
+    imageUrl: row?.imageUrl ?? null,
+    folderId: row?.folderId ?? null,
+    folder: row?.folder
+      ? { id: String(row.folder.id), name: String(row.folder.name || ''), orderIndex: Number(row.folder.orderIndex ?? 0) }
+      : null,
+    tags,
+    orderIndex: Number(row?.orderIndex ?? 0),
+    createdAt: row?.createdAt ? new Date(row.createdAt).toISOString() : null,
+    updatedAt: row?.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+  };
+}
+
+// ---------- PASTAS ----------
+
+async listUtilityFolders() {
+  const rows = await (this.prisma as any).utilityFolder.findMany({
+    orderBy: [{ orderIndex: 'asc' }, { name: 'asc' }],
+    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    items: (rows || []).map((x: any) => ({
+      id: String(x.id),
+      name: String(x.name || ''),
+      orderIndex: Number(x.orderIndex ?? 0),
+      createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
+      updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
+    })),
+  };
+}
+
+async createUtilityFolder(body: { name: string }) {
+  const name = String(body?.name || '').trim();
+  if (!name) throw new Error('name obrigatório');
+  if (name.length > 60) throw new Error('name muito grande (máx 60)');
+
+  const max = await (this.prisma as any).utilityFolder.aggregate({ _max: { orderIndex: true } });
+  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+
+  const created = await (this.prisma as any).utilityFolder.create({
+    data: { name, orderIndex: nextOrder },
+    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    id: String(created.id),
+    name: String(created.name || ''),
+    orderIndex: Number(created.orderIndex ?? 0),
+    createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
+    updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
+  };
+}
+
+async updateUtilityFolder(id: string, body: { name: string }) {
+  const folderId = String(id || '').trim();
+  if (!folderId) throw new Error('id obrigatório');
+
+  const name = String(body?.name || '').trim();
+  if (!name) throw new Error('name obrigatório');
+
+  const updated = await (this.prisma as any).utilityFolder.update({
+    where: { id: folderId },
+    data: { name },
+    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    id: String(updated.id),
+    name: String(updated.name || ''),
+    orderIndex: Number(updated.orderIndex ?? 0),
+    createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
+    updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
+  };
+}
+
+async deleteUtilityFolder(id: string) {
+  const folderId = String(id || '').trim();
+  if (!folderId) throw new Error('id obrigatório');
+
+  // coloca folderId = null nas utilidades (SetNull já faz, mas vamos ser explícitos)
+  await (this.prisma as any).utilityLink.updateMany({
+    where: { folderId },
+    data: { folderId: null },
+  });
+
+  await (this.prisma as any).utilityFolder.delete({ where: { id: folderId } });
+  return { ok: true };
+}
+
+// ---------- TAGS ----------
+
+async listUtilityTags() {
+  const rows = await (this.prisma as any).utilityTag.findMany({
+    orderBy: [{ name: 'asc' }],
+    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    items: (rows || []).map((x: any) => ({
+      id: String(x.id),
+      name: String(x.name || ''),
+      color: x.color ?? null,
+      createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
+      updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
+    })),
+  };
+}
+
+async createUtilityTag(body: { name: string; color?: string | null }) {
+  const name = String(body?.name || '').trim();
+  if (!name) throw new Error('name obrigatório');
+  if (name.length > 40) throw new Error('name muito grande (máx 40)');
+
+  const color = body?.color ? String(body.color).trim() : null;
+
+  const created = await (this.prisma as any).utilityTag.create({
+    data: { name, color: color || null },
+    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    id: String(created.id),
+    name: String(created.name || ''),
+    color: created.color ?? null,
+    createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
+    updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
+  };
+}
+
+async updateUtilityTag(id: string, body: { name: string; color?: string | null }) {
+  const tagId = String(id || '').trim();
+  if (!tagId) throw new Error('id obrigatório');
+
+  const name = String(body?.name || '').trim();
+  if (!name) throw new Error('name obrigatório');
+
+  const color = body?.color ? String(body.color).trim() : null;
+
+  const updated = await (this.prisma as any).utilityTag.update({
+    where: { id: tagId },
+    data: { name, color: color || null },
+    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+  });
+
+  return {
+    id: String(updated.id),
+    name: String(updated.name || ''),
+    color: updated.color ?? null,
+    createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
+    updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
+  };
+}
+
+async deleteUtilityTag(id: string) {
+  const tagId = String(id || '').trim();
+  if (!tagId) throw new Error('id obrigatório');
+
+  // deleta relações primeiro
+  await (this.prisma as any).utilityLinkTag.deleteMany({ where: { tagId } });
+  await (this.prisma as any).utilityTag.delete({ where: { id: tagId } });
+
+  return { ok: true };
+}
+
+// ---------- LIST / CREATE / UPDATE / DELETE ----------
+
+async listUtilities(params?: { folderId?: string; tagIds?: string[]; q?: string }) {
+  const folderId = String(params?.folderId || '').trim();
+  const tagIds = Array.isArray(params?.tagIds) ? params!.tagIds!.map(String).filter(Boolean) : [];
+  const q = String(params?.q || '').trim().toLowerCase();
+
+  const where: any = {};
+
+  if (folderId) where.folderId = folderId;
+
+  if (q) {
+    where.OR = [
+      { name: { contains: q, mode: 'insensitive' } },
+      { url: { contains: q, mode: 'insensitive' } },
+      { description: { contains: q, mode: 'insensitive' } },
+    ];
   }
 
-  private safeExtFromMimeOrName(file?: Express.Multer.File) {
-    const nameExt = file?.originalname ? path.extname(file.originalname) : '';
-    const ext = (nameExt || '').toLowerCase();
-
-    const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']);
-    if (allowed.has(ext)) return ext === '.jpeg' ? '.jpg' : ext;
-
-    const mime = String(file?.mimetype || '').toLowerCase();
-    if (mime.includes('png')) return '.png';
-    if (mime.includes('webp')) return '.webp';
-    if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
-
-    return '';
+  // filtro por tags: "tem todas as tags selecionadas"
+  if (tagIds.length) {
+    where.AND = tagIds.map((tid) => ({
+      tags: { some: { tagId: tid } },
+    }));
   }
 
-  async listUtilities() {
-    try {
-      const rows = await (this.prisma as any).utilityLink.findMany({
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          name: true,
-          url: true,
-          description: true,
-          imageUrl: true,
-          createdAt: true,
-          updatedAt: true,
-        },
+  const rows = await (this.prisma as any).utilityLink.findMany({
+    where,
+    orderBy: [{ orderIndex: 'asc' }, { createdAt: 'desc' }],
+    include: {
+      folder: true,
+      tags: { include: { tag: true } },
+    },
+  });
+
+  return { items: (rows || []).map((r: any) => this.toUtilityDto(r)) };
+}
+
+async createUtility(
+  body: { name: string; url: string; description?: string; folderId?: string; tagIds?: string[] },
+  file?: Express.Multer.File,
+) {
+  const name = String(body?.name || '').trim();
+  const url = this.normalizeUrl(body?.url);
+  const description = cleanNullableString(String(body?.description ?? ''));
+  const folderId = String(body?.folderId || '').trim() || null;
+
+  const tagIds = Array.isArray(body?.tagIds) ? body!.tagIds!.map(String).filter(Boolean) : [];
+
+  if (!name) throw new Error('name obrigatório');
+  if (name.length > 80) throw new Error('name muito grande (máx 80)');
+  if (!url) throw new Error('url obrigatório');
+
+  let imageUrl: string | null = null;
+
+  if (file) {
+    const ext = this.safeExtFromMimeOrName(file);
+    if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+    if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
+    fs.mkdirSync(uploadsDir, { recursive: true });
+
+    const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
+    const filepath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filepath, file.buffer);
+
+    imageUrl = `/uploads/admin/utilities/${filename}`;
+  }
+
+  // next orderIndex = max + 1 dentro da pasta (ou global se folderId null)
+  const max = await (this.prisma as any).utilityLink.aggregate({
+    where: { folderId },
+    _max: { orderIndex: true },
+  });
+  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+
+  const created = await (this.prisma as any).utilityLink.create({
+    data: {
+      name,
+      url,
+      description,
+      imageUrl,
+      folderId,
+      orderIndex: nextOrder,
+      tags: tagIds.length
+        ? {
+            create: tagIds.map((tagId) => ({ tagId })),
+          }
+        : undefined,
+    },
+    include: {
+      folder: true,
+      tags: { include: { tag: true } },
+    },
+  });
+
+  return this.toUtilityDto(created);
+}
+
+async updateUtility(
+  id: string,
+  body: { name?: string; url?: string; description?: string; folderId?: string; tagIds?: string[] },
+  file?: Express.Multer.File,
+) {
+  const utilityId = String(id || '').trim();
+  if (!utilityId) throw new Error('id obrigatório');
+
+  const exists = await (this.prisma as any).utilityLink.findUnique({
+    where: { id: utilityId },
+    include: { tags: true },
+  });
+  if (!exists) throw new Error('Utilidade não encontrada');
+
+  const data: any = {};
+
+  if (typeof body?.name === 'string') {
+    const nm = body.name.trim();
+    if (!nm) throw new Error('name obrigatório');
+    if (nm.length > 80) throw new Error('name muito grande (máx 80)');
+    data.name = nm;
+  }
+
+  if (typeof body?.url === 'string') {
+    const u = this.normalizeUrl(body.url);
+    if (!u) throw new Error('url obrigatório');
+    data.url = u;
+  }
+
+  if (typeof body?.description === 'string') {
+    data.description = cleanNullableString(body.description);
+  }
+
+  // mover de pasta: mantém orderIndex atual, mas se mudar pasta, joga pro final da pasta destino
+  if (typeof body?.folderId === 'string') {
+    const newFolderId = body.folderId.trim() || null;
+    const oldFolderId = exists.folderId ?? null;
+
+    if (newFolderId !== oldFolderId) {
+      const max = await (this.prisma as any).utilityLink.aggregate({
+        where: { folderId: newFolderId },
+        _max: { orderIndex: true },
       });
-
-      return {
-        items: (rows || []).map((x: any) => ({
-          id: String(x.id),
-          name: String(x.name || ''),
-          url: String(x.url || ''),
-          description: x.description ?? null,
-          imageUrl: x.imageUrl ?? null,
-          createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
-          updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
-        })),
-      };
-    } catch (e: any) {
-      throw new BadRequestException(e?.message || 'Invalid request');
+      data.folderId = newFolderId;
+      data.orderIndex = Number(max?._max?.orderIndex ?? 0) + 1;
     }
   }
 
-  async createUtility(body: any, file?: Express.Multer.File) {
-    try {
-      const name = String(body?.name || '').trim();
-      const url = this.normalizeUrl(body?.url);
-      const description = cleanNullableString(String(body?.description ?? ''));
+  // substituir imagem (opcional)
+  if (file) {
+    const ext = this.safeExtFromMimeOrName(file);
+    if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+    if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
 
-      if (!name) throw new Error('name obrigatório');
-      if (name.length > 80) throw new Error('name muito grande (máx 80 caracteres)');
-      if (!url) throw new Error('url obrigatório');
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
+    fs.mkdirSync(uploadsDir, { recursive: true });
 
-      let imageUrl: string | null = null;
+    const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
+    const filepath = path.join(uploadsDir, filename);
+    fs.writeFileSync(filepath, file.buffer);
 
-      if (file) {
-        // valida extensão/mime
-        const ext = this.safeExtFromMimeOrName(file);
-        if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
-        if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+    data.imageUrl = `/uploads/admin/utilities/${filename}`;
 
-        const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
-        fs.mkdirSync(uploadsDir, { recursive: true });
+    // tenta remover arquivo antigo
+    const oldImg = String(exists.imageUrl || '').trim();
+    if (oldImg && oldImg.startsWith('/uploads/')) {
+      const rel = oldImg.replace(/^\/uploads\//, '');
+      const full = path.join(process.cwd(), 'uploads', rel);
+      try {
+        if (fs.existsSync(full)) fs.unlinkSync(full);
+      } catch {}
+    }
+  }
 
-        const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
-        const filepath = path.join(uploadsDir, filename);
+  // tags (se veio)
+  const shouldUpdateTags = Array.isArray(body?.tagIds);
+  const nextTagIds = shouldUpdateTags ? (body!.tagIds || []).map(String).filter(Boolean) : null;
 
-        fs.writeFileSync(filepath, file.buffer);
-
-        imageUrl = `/uploads/admin/utilities/${filename}`;
+  const updated = await (this.prisma as any).$transaction(async (tx: any) => {
+    if (shouldUpdateTags) {
+      await tx.utilityLinkTag.deleteMany({ where: { utilityId } });
+      if (nextTagIds!.length) {
+        await tx.utilityLinkTag.createMany({
+          data: nextTagIds!.map((tagId) => ({ utilityId, tagId })),
+          skipDuplicates: true,
+        });
       }
-
-      const created = await (this.prisma as any).utilityLink.create({
-        data: {
-          name,
-          url,
-          description,
-          imageUrl,
-        },
-        select: {
-          id: true,
-          name: true,
-          url: true,
-          description: true,
-          imageUrl: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-      });
-
-      return {
-        id: String(created.id),
-        name: String(created.name || ''),
-        url: String(created.url || ''),
-        description: created.description ?? null,
-        imageUrl: created.imageUrl ?? null,
-        createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
-        updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
-      };
-    } catch (e: any) {
-      throw new BadRequestException(e?.message || 'Invalid request');
     }
-  }
 
-  async deleteUtility(id: string) {
+    // update principal
+    return await tx.utilityLink.update({
+      where: { id: utilityId },
+      data,
+      include: {
+        folder: true,
+        tags: { include: { tag: true } },
+      },
+    });
+  });
+
+  return this.toUtilityDto(updated);
+}
+
+async deleteUtility(id: string) {
+  const utilityId = String(id || '').trim();
+  if (!utilityId) throw new Error('id obrigatório');
+
+  const exists = await (this.prisma as any).utilityLink.findUnique({
+    where: { id: utilityId },
+    select: { id: true, imageUrl: true },
+  });
+
+  if (!exists) throw new Error('Utilidade não encontrada');
+
+  // apaga imagem física
+  const img = String(exists.imageUrl || '').trim();
+  if (img && img.startsWith('/uploads/')) {
+    const rel = img.replace(/^\/uploads\//, '');
+    const full = path.join(process.cwd(), 'uploads', rel);
     try {
-      const utilityId = String(id || '').trim();
-      if (!utilityId) throw new Error('id obrigatório');
-
-      const exists = await (this.prisma as any).utilityLink.findUnique({
-        where: { id: utilityId },
-        select: { id: true, imageUrl: true },
-      });
-
-      if (!exists) throw new Error('Utilidade não encontrada');
-
-      // tenta remover arquivo físico (se existir e se for do nosso uploads)
-      const img = String(exists.imageUrl || '').trim();
-      if (img && img.startsWith('/uploads/')) {
-        const rel = img.replace(/^\/uploads\//, '');
-        const full = path.join(process.cwd(), 'uploads', rel);
-        try {
-          if (fs.existsSync(full)) fs.unlinkSync(full);
-        } catch {
-          // se falhar, não derruba (só não apaga o arquivo)
-        }
-      }
-
-      await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
-
-      return { ok: true };
-    } catch (e: any) {
-      throw new BadRequestException(e?.message || 'Invalid request');
-    }
+      if (fs.existsSync(full)) fs.unlinkSync(full);
+    } catch {}
   }
+
+  // apaga tags
+  await (this.prisma as any).utilityLinkTag.deleteMany({ where: { utilityId } });
+  await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
+
+  return { ok: true };
+}
+
+// ---------- REORDER (drag & drop) ----------
+
+async reorderUtilities(orderedIds: string[]) {
+  const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
+  if (!ids.length) return { ok: true };
+
+  // buscamos para descobrir pasta e garantir consistência
+  const rows = await (this.prisma as any).utilityLink.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, folderId: true },
+  });
+
+  if (!rows.length) return { ok: true };
+
+  // garante que todos são da mesma pasta (ou todos null) para evitar bagunça
+  const folderKey = String(rows[0].folderId ?? '');
+  const mixed = rows.some((r: any) => String(r.folderId ?? '') !== folderKey);
+  if (mixed) throw new Error('Reordenação inválida: itens de pastas diferentes');
+
+  // atualiza ordem
+  await (this.prisma as any).$transaction(
+    ids.map((id, idx) =>
+      (this.prisma as any).utilityLink.update({
+        where: { id },
+        data: { orderIndex: idx + 1 },
+        select: { id: true },
+      }),
+    ),
+  );
+
+  return { ok: true };
 }
