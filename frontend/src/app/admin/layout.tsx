@@ -57,6 +57,38 @@ function IconCalendar(props: React.SVGProps<SVGSVGElement>) {
   );
 }
 
+/** ✅ NOVO: Ícone de Utilidade */
+function IconUtilities(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" {...props}>
+      <path
+        d="M10 4h10v8H10V4Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M4 12h10v8H4v-8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M7 15h4M7 17h3"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+      <path
+        d="M13 7h4M13 9h3"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconLogout(props: React.SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="none" {...props}>
@@ -169,6 +201,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       { href: '/admin/dashboard', alt: '/admin', label: 'Dashboard', icon: IconDashboard },
       { href: '/admin/experts', label: 'Experts', icon: IconExperts },
       { href: '/admin/cronogramas', label: 'Cronogramas', icon: IconCalendar }, // ✅ NOVO
+      { href: '/admin/utilidades', label: 'Utilidade', icon: IconUtilities }, // ✅ NOVO: Aba Utilidade
     ],
     [],
   );
@@ -187,7 +220,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         ? 'Experts'
         : pathname?.startsWith('/admin/cronogramas')
           ? 'Cronogramas'
-          : 'Admin';
+          : pathname?.startsWith('/admin/utilidades')
+            ? 'Utilidade'
+            : 'Admin';
 
   if (checking) {
     return (

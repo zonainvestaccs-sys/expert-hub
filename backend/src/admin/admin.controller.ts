@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Patch,
@@ -18,6 +19,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '@prisma/client';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -195,10 +197,71 @@ export class AdminController {
   // =========================
   @Post('experts/:expertId/photo')
   @Roles(UserRole.ADMIN)
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
   async updateExpertPhoto(@Param('expertId') expertId: string, @UploadedFile() file?: Express.Multer.File) {
     try {
       return await this.adminService.updateExpertPhoto(expertId, file);
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN)
+  // GET /admin/utilities
+  // =========================
+  @Get('utilities')
+  @Roles(UserRole.ADMIN)
+  async listUtilities() {
+    try {
+      return await this.adminService.listUtilities();
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN)
+  // POST /admin/utilities (multipart/form-data)
+  // fields: name, url, file?(image)
+  // =========================
+  @Post('utilities')
+  @Roles(UserRole.ADMIN)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+    }),
+  )
+  async createUtility(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: any,
+  ) {
+    try {
+      return await this.adminService.createUtility({
+        name: String(body?.name || ''),
+        url: String(body?.url || ''),
+        file,
+      });
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN)
+  // DELETE /admin/utilities/:id
+  // =========================
+  @Delete('utilities/:id')
+  @Roles(UserRole.ADMIN)
+  async deleteUtility(@Param('id') id: string) {
+    try {
+      return await this.adminService.deleteUtility(id);
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }

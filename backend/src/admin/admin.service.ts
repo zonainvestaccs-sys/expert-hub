@@ -1559,4 +1559,148 @@ export class AdminService {
 
     return total;
   }
+
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN)
+  // =========================
+
+  private normalizeUrl(input: any) {
+    const v = String(input ?? '').trim();
+    if (!v) return '';
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    return `https://${v}`;
+  }
+
+  private safeExtFromMimeOrName(file?: Express.Multer.File) {
+    const nameExt = file?.originalname ? path.extname(file.originalname) : '';
+    const ext = (nameExt || '').toLowerCase();
+
+    const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']);
+    if (allowed.has(ext)) return ext === '.jpeg' ? '.jpg' : ext;
+
+    const mime = String(file?.mimetype || '').toLowerCase();
+    if (mime.includes('png')) return '.png';
+    if (mime.includes('webp')) return '.webp';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
+
+    return '';
+  }
+
+  async listUtilities() {
+    try {
+      const rows = await (this.prisma as any).utilityLink.findMany({
+        orderBy: { createdAt: 'desc' },
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          imageUrl: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        items: (rows || []).map((x: any) => ({
+          id: String(x.id),
+          name: String(x.name || ''),
+          url: String(x.url || ''),
+          imageUrl: x.imageUrl ?? null,
+          createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
+          updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
+        })),
+      };
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  async createUtility(body: any, file?: Express.Multer.File) {
+    try {
+      const name = String(body?.name || '').trim();
+      const url = this.normalizeUrl(body?.url);
+
+      if (!name) throw new Error('name obrigatório');
+      if (name.length > 80) throw new Error('name muito grande (máx 80 caracteres)');
+      if (!url) throw new Error('url obrigatório');
+
+      let imageUrl: string | null = null;
+
+      if (file) {
+        // valida extensão/mime
+        const ext = this.safeExtFromMimeOrName(file);
+        if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+        if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+
+        const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
+        fs.mkdirSync(uploadsDir, { recursive: true });
+
+        const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
+        const filepath = path.join(uploadsDir, filename);
+
+        fs.writeFileSync(filepath, file.buffer);
+
+        imageUrl = `/uploads/admin/utilities/${filename}`;
+      }
+
+      const created = await (this.prisma as any).utilityLink.create({
+        data: {
+          name,
+          url,
+          imageUrl,
+        },
+        select: {
+          id: true,
+          name: true,
+          url: true,
+          imageUrl: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return {
+        id: String(created.id),
+        name: String(created.name || ''),
+        url: String(created.url || ''),
+        imageUrl: created.imageUrl ?? null,
+        createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
+        updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
+      };
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  async deleteUtility(id: string) {
+    try {
+      const utilityId = String(id || '').trim();
+      if (!utilityId) throw new Error('id obrigatório');
+
+      const exists = await (this.prisma as any).utilityLink.findUnique({
+        where: { id: utilityId },
+        select: { id: true, imageUrl: true },
+      });
+
+      if (!exists) throw new Error('Utilidade não encontrada');
+
+      // tenta remover arquivo físico (se existir e se for do nosso uploads)
+      const img = String(exists.imageUrl || '').trim();
+      if (img && img.startsWith('/uploads/')) {
+        const rel = img.replace(/^\/uploads\//, '');
+        const full = path.join(process.cwd(), 'uploads', rel);
+        try {
+          if (fs.existsSync(full)) fs.unlinkSync(full);
+        } catch {
+          // se falhar, não derruba (só não apaga o arquivo)
+        }
+      }
+
+      await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
+
+      return { ok: true };
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
 }

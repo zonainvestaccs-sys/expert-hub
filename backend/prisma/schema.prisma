@@ -312,3 +312,16 @@ model ExpertNotification {
   @@index([expertId, isRead, createdAt])
   @@index([expertId, createdAt])
 }
+
+/* -------------------- ✅ UTILIDADES (ADMIN) -------------------- */
+
+model UtilityLink {
+  id        String   @id @default(cuid())
+  name      String
+  url       String
+  imageUrl  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([createdAt])
+}
