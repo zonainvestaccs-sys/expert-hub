@@ -1594,6 +1594,7 @@ export class AdminService {
           id: true,
           name: true,
           url: true,
+          description: true,
           imageUrl: true,
           createdAt: true,
           updatedAt: true,
@@ -1605,6 +1606,7 @@ export class AdminService {
           id: String(x.id),
           name: String(x.name || ''),
           url: String(x.url || ''),
+          description: x.description ?? null,
           imageUrl: x.imageUrl ?? null,
           createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
           updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
@@ -1619,6 +1621,7 @@ export class AdminService {
     try {
       const name = String(body?.name || '').trim();
       const url = this.normalizeUrl(body?.url);
+      const description = cleanNullableString(String(body?.description ?? ''));
 
       if (!name) throw new Error('name obrigatório');
       if (name.length > 80) throw new Error('name muito grande (máx 80 caracteres)');
@@ -1647,12 +1650,14 @@ export class AdminService {
         data: {
           name,
           url,
+          description,
           imageUrl,
         },
         select: {
           id: true,
           name: true,
           url: true,
+          description: true,
           imageUrl: true,
           createdAt: true,
           updatedAt: true,
@@ -1663,6 +1668,7 @@ export class AdminService {
         id: String(created.id),
         name: String(created.name || ''),
         url: String(created.url || ''),
+        description: created.description ?? null,
         imageUrl: created.imageUrl ?? null,
         createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
         updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,

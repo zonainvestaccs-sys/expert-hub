@@ -228,7 +228,7 @@ export class AdminController {
   // =========================
   // ✅✅✅ UTILIDADES (ADMIN)
   // POST /admin/utilities (multipart/form-data)
-  // fields: name, url, file?(image)
+  // fields: name, url, description?, file?(image)
   // =========================
   @Post('utilities')
   @Roles(UserRole.ADMIN)
@@ -243,11 +243,14 @@ export class AdminController {
     @Body() body: any,
   ) {
     try {
-      return await this.adminService.createUtility({
-        name: String(body?.name || ''),
-        url: String(body?.url || ''),
+      return await this.adminService.createUtility(
+        {
+          name: String(body?.name || ''),
+          url: String(body?.url || ''),
+          description: String(body?.description || ''),
+        },
         file,
-      });
+      );
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
