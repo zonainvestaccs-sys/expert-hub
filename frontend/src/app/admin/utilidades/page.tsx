@@ -23,7 +23,13 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type UtilityTag = { id: string; name: string; color?: string | null };
-type UtilityFolderNode = { id: string; name: string; parentId?: string | null; orderIndex: number; children: UtilityFolderNode[] };
+type UtilityFolderNode = {
+  id: string;
+  name: string;
+  parentId?: string | null;
+  orderIndex: number;
+  children: UtilityFolderNode[];
+};
 
 type UtilityItem = {
   id: string;
@@ -42,6 +48,12 @@ function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(' ');
 }
 
+/**
+ * Opcional:
+ * Se você tiver NEXT_PUBLIC_API_URL (ex: https://api.seudominio.com)
+ * isso ajuda a montar URL absoluta para imagens quando imageUrl vem como "/uploads/..."
+ * Se não tiver, ele mantém o caminho relativo.
+ */
 const API_PUBLIC_BASE = (() => {
   const raw = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE ?? '').trim();
   const low = raw.toLowerCase();
@@ -66,129 +78,126 @@ function normalizeUrl(input: string) {
 }
 
 /** ===== ICONS ===== */
-function Icon(props: { name: 'plus' | 'trash' | 'edit' | 'refresh' | 'close' | 'upload' | 'folder' | 'tag' | 'chevR' | 'chevD' | 'dots' }) {
+function Icon(props: {
+  name:
+    | 'plus'
+    | 'trash'
+    | 'edit'
+    | 'refresh'
+    | 'close'
+    | 'upload'
+    | 'folder'
+    | 'tag'
+    | 'chevR'
+    | 'chevD'
+    | 'dots';
+}) {
   const { name } = props;
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' as const };
 
-  if (name === 'plus') return (
-    <svg {...common}>
-      <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'plus')
+    return (
+      <svg {...common}>
+        <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'trash') return (
-    <svg {...common}>
-      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === 'trash')
+    return (
+      <svg {...common}>
+        <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'edit') return (
-    <svg {...common}>
-      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === 'edit')
+    return (
+      <svg {...common}>
+        <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'refresh') return (
-    <svg {...common}>
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'refresh')
+    return (
+      <svg {...common}>
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
-  if (name === 'close') return (
-    <svg {...common}>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'close')
+    return (
+      <svg {...common}>
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'upload') return (
-    <svg {...common}>
-      <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'upload')
+    return (
+      <svg {...common}>
+        <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path
+          d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
 
-  if (name === 'folder') return (
-    <svg {...common}>
-      <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'folder')
+    return (
+      <svg {...common}>
+        <path
+          d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'tag') return (
-    <svg {...common}>
-      <path d="M20 10V4h-6L4 14l6 6 10-10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M14.5 7.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'tag')
+    return (
+      <svg {...common}>
+        <path d="M20 10V4h-6L4 14l6 6 10-10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M14.5 7.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'chevR') return (
-    <svg {...common}>
-      <path d="M10 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'chevR')
+    return (
+      <svg {...common}>
+        <path d="M10 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
-  if (name === 'chevD') return (
-    <svg {...common}>
-      <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'chevD')
+    return (
+      <svg {...common}>
+        <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
   return (
     <svg {...common}>
       <path d="M12 5h.01M12 12h.01M12 19h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
-  );
-}
-
-/** ===== UI helpers ===== */
-function CardShell({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
-  return (
-    <div
-      onClick={onClick}
-      className={cx(
-        'rounded-2xl border border-white/10',
-        'bg-gradient-to-b from-white/[0.055] to-white/[0.02]',
-        'shadow-[0_18px_70px_rgba(0,0,0,0.42)]',
-        'transition-all duration-200',
-        'hover:-translate-y-[1px] hover:border-white/20 hover:bg-white/[0.035]',
-        'hover:shadow-[0_26px_90px_rgba(0,0,0,0.55)]',
-        onClick && 'cursor-pointer',
-        'overflow-hidden',
-      )}
-    >
-      {children}
-    </div>
-  );
-}
-
-function Pill({ text, color }: { text: string; color?: string | null }) {
-  const bg = color ? `${color}22` : 'rgba(255,255,255,0.08)';
-  const bd = color ? `${color}55` : 'rgba(255,255,255,0.12)';
-  return (
-    <span
-      className="inline-flex items-center gap-2 px-2.5 h-7 rounded-full text-xs text-white/85 border"
-      style={{ background: bg, borderColor: bd }}
-      title={text}
-    >
-      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color || 'rgba(255,255,255,0.5)' }} />
-      <span className="truncate max-w-[140px]">{text}</span>
-    </span>
   );
 }
 
@@ -215,11 +224,13 @@ function SortableRow(props: {
 
   return (
     <div ref={setNodeRef} style={style} className={cx('group', isDragging && 'z-50')}>
-      <div className={cx(
-        'rounded-2xl border border-white/10 bg-white/[0.02]',
-        'hover:bg-white/[0.04] hover:border-white/20 transition',
-        'px-3 py-3 flex items-center gap-3'
-      )}>
+      <div
+        className={cx(
+          'rounded-2xl border border-white/10 bg-white/[0.02]',
+          'hover:bg-white/[0.04] hover:border-white/20 transition',
+          'px-3 py-3 flex items-center gap-3',
+        )}
+      >
         {/* drag handle */}
         <div
           {...attributes}
@@ -260,7 +271,10 @@ function SortableRow(props: {
             <div className="shrink-0 flex items-center gap-2">
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
                 className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] transition grid place-items-center text-white/85"
                 title="Editar"
                 aria-label="Editar"
@@ -270,7 +284,10 @@ function SortableRow(props: {
 
               <button
                 type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
                 className="h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
                 title="Excluir"
                 aria-label="Excluir"
@@ -285,7 +302,20 @@ function SortableRow(props: {
             <div className="mt-2 flex flex-wrap gap-2">
               {item.tags.map((t) => (
                 <span key={t.id} onClick={(e) => e.stopPropagation()}>
-                  <Pill text={t.name} color={t.color} />
+                  <span
+                    className="inline-flex items-center gap-2 px-2.5 h-7 rounded-full text-xs text-white/85 border"
+                    style={{
+                      background: t.color ? `${t.color}22` : 'rgba(255,255,255,0.08)',
+                      borderColor: t.color ? `${t.color}55` : 'rgba(255,255,255,0.12)',
+                    }}
+                    title={t.name}
+                  >
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full"
+                      style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
+                    />
+                    <span className="truncate max-w-[140px]">{t.name}</span>
+                  </span>
                 </span>
               ))}
             </div>
@@ -377,9 +407,7 @@ function FolderTree(props: {
         </div>
 
         {hasKids && isOpen ? (
-          <div className="mt-1 space-y-1">
-            {node.children.map((c) => <Row key={c.id} node={c} depth={depth + 1} />)}
-          </div>
+          <div className="mt-1 space-y-1">{node.children.map((c) => <Row key={c.id} node={c} depth={depth + 1} />)}</div>
         ) : null}
       </div>
     );
@@ -400,9 +428,7 @@ function FolderTree(props: {
         <div className="text-white/85 text-sm truncate">Meu Drive</div>
       </div>
 
-      <div className="mt-2 space-y-1">
-        {roots.map((n) => <Row key={n.id} node={n} depth={0} />)}
-      </div>
+      <div className="mt-2 space-y-1">{roots.map((n) => <Row key={n.id} node={n} depth={0} />)}</div>
     </div>
   );
 }
@@ -505,14 +531,16 @@ export default function AdminUtilitiesPage() {
   const loadFolders = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
-    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/utility-folders', { token });
+    // ✅ FIX: /admin/utility-folders
+    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/admin/utility-folders', { token });
     setFolders(Array.isArray(data?.items) ? data.items : []);
   }, []);
 
   const loadTags = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
-    const data = await apiFetch<{ items: UtilityTag[] }>('/utility-tags', { token });
+    // ✅ FIX: /admin/utility-tags
+    const data = await apiFetch<{ items: UtilityTag[] }>('/admin/utility-tags', { token });
     setTags(Array.isArray(data?.items) ? data.items : []);
   }, []);
 
@@ -525,11 +553,11 @@ export default function AdminUtilitiesPage() {
 
       const params = new URLSearchParams();
       if (activeFolderId) params.set('folderId', activeFolderId);
-      // root: não passa folderId e backend retorna folderId=null
       if (q.trim()) params.set('q', q.trim());
       if (selectedTagIds.length) params.set('tagIds', selectedTagIds.join(','));
 
-      const data = await apiFetch<{ items: UtilityItem[] }>(`/utilities?${params.toString()}`, { token });
+      // ✅ FIX: /admin/utilities
+      const data = await apiFetch<{ items: UtilityItem[] }>(`/admin/utilities?${params.toString()}`, { token });
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao carregar utilidades';
@@ -644,10 +672,15 @@ export default function AdminUtilitiesPage() {
       fd.append('tagIds', tagIdsForItem.join(','));
       if (file) fd.append('file', file);
 
+      // ✅ FIX: /admin/utilities
       if (!editingId) {
-        await apiUpload<UtilityItem>('/utilities', { token, formData: fd, method: 'POST' });
+        await apiUpload<UtilityItem>('/admin/utilities', { token, formData: fd, method: 'POST' });
       } else {
-        await apiUpload<UtilityItem>(`/utilities/${encodeURIComponent(editingId)}`, { token, formData: fd, method: 'PATCH' });
+        await apiUpload<UtilityItem>(`/admin/utilities/${encodeURIComponent(editingId)}`, {
+          token,
+          formData: fd,
+          method: 'PATCH',
+        });
       }
 
       closeModal();
@@ -668,7 +701,8 @@ export default function AdminUtilitiesPage() {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      await apiFetch(`/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+      // ✅ FIX: /admin/utilities/:id
+      await apiFetch(`/admin/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
       setItems((prev) => prev.filter((x) => x.id !== id));
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir utilidade';
@@ -683,19 +717,16 @@ export default function AdminUtilitiesPage() {
 
   /** ===== Top filters ===== */
   const visibleTagsForSidebar = useMemo(() => {
-    // tags list display = not hidden by preference
     return tags.filter((t) => !hiddenTagIds.has(t.id));
   }, [tags, hiddenTagIds]);
 
   function toggleSelectedTag(id: string) {
-    setSelectedTagIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   /** ===== Folder nav ===== */
   function openFolder(folderId: string | null) {
     setActiveFolderId(folderId);
-    // reset filters optional? keep tags selection and q
-    // reload
     setTimeout(() => loadItems(), 0);
   }
 
@@ -718,13 +749,14 @@ export default function AdminUtilitiesPage() {
     try {
       const token = tokenRef.current;
       if (!token) return;
-      await apiFetch('/utilities/reorder', {
+
+      // ✅ FIX: /admin/utilities/reorder
+      await apiFetch('/admin/utilities/reorder', {
         token,
         method: 'POST',
         body: { orderedIds: next.map((x) => x.id) },
       });
     } catch {
-      // fallback reload
       await loadItems();
     }
   }
@@ -740,7 +772,8 @@ export default function AdminUtilitiesPage() {
       const nm = tagName.trim();
       if (!nm) throw new Error('Nome da tag obrigatório');
 
-      await apiFetch('/utility-tags', {
+      // ✅ FIX: /admin/utility-tags
+      await apiFetch('/admin/utility-tags', {
         token,
         method: 'POST',
         body: { name: nm, color: tagColor },
@@ -763,7 +796,9 @@ export default function AdminUtilitiesPage() {
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
-      await apiFetch(`/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
+
+      // ✅ FIX: /admin/utility-tags/:id
+      await apiFetch(`/admin/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
       await loadTags();
       setSelectedTagIds((p) => p.filter((x) => x !== tagId));
     } catch (e: any) {
@@ -782,14 +817,15 @@ export default function AdminUtilitiesPage() {
       const nm = folderName.trim();
       if (!nm) throw new Error('Nome da pasta obrigatório');
 
-      await apiFetch('/utility-folders', {
+      // ✅ FIX: /admin/utility-folders
+      await apiFetch('/admin/utility-folders', {
         token,
         method: 'POST',
         body: { name: nm, parentId: folderParentId },
       });
 
       setFolderName('');
-      setFolderParentId(activeFolderId); // convenience
+      setFolderParentId(activeFolderId);
       await loadFolders();
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao criar pasta';
@@ -802,13 +838,13 @@ export default function AdminUtilitiesPage() {
   /** ===== Layout ===== */
   return (
     <div className="relative">
-      {/* TOP BAR: title + breadcrumb + top menus */}
+      {/* TOP BAR */}
       <div className="flex flex-col gap-3">
         <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
           <div className="min-w-0">
             <div className="text-white/92 font-semibold tracking-tight text-[18px]">Utilidades</div>
 
-            {/* breadcrumb like Drive */}
+            {/* breadcrumb */}
             <div className="mt-2 flex flex-wrap items-center gap-1 text-xs text-white/55">
               {breadcrumb.map((b, idx) => (
                 <button
@@ -826,7 +862,7 @@ export default function AdminUtilitiesPage() {
             </div>
           </div>
 
-          {/* menus at top, beside Atualizar and + */}
+          {/* menus at top */}
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Folder menu */}
             <div className="relative">
@@ -869,15 +905,20 @@ export default function AdminUtilitiesPage() {
                     </button>
                   </div>
 
-                  <div className="text-white/45 text-[11px] mt-2">
-                    Parent: {activeFolderId ? 'Pasta atual' : 'Meu Drive'}
-                  </div>
+                  <div className="text-white/45 text-[11px] mt-2">Parent: {activeFolderId ? 'Pasta atual' : 'Meu Drive'}</div>
 
                   <div className="mt-3 h-px bg-white/10" />
 
                   <div className="mt-3 text-white/70 text-xs mb-2">Navegação rápida</div>
                   <div className="max-h-[280px] overflow-auto pr-1">
-                    <FolderTree roots={folders} activeFolderId={activeFolderId} onOpenFolder={(id) => { openFolder(id); setFoldersOpen(false); }} />
+                    <FolderTree
+                      roots={folders}
+                      activeFolderId={activeFolderId}
+                      onOpenFolder={(id) => {
+                        openFolder(id);
+                        setFoldersOpen(false);
+                      }}
+                    />
                   </div>
 
                   <div className="mt-3 flex justify-end">
@@ -969,7 +1010,10 @@ export default function AdminUtilitiesPage() {
                             title="Filtrar"
                           >
                             <span className="inline-flex items-center gap-2">
-                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
+                              />
                               {t.name}
                             </span>
                           </button>
@@ -1013,7 +1057,9 @@ export default function AdminUtilitiesPage() {
                   <div className="mt-3 flex justify-between items-center">
                     <button
                       type="button"
-                      onClick={() => { setSelectedTagIds([]); }}
+                      onClick={() => {
+                        setSelectedTagIds([]);
+                      }}
                       className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
                     >
                       Limpar filtros
@@ -1037,7 +1083,9 @@ export default function AdminUtilitiesPage() {
               onChange={(e) => setQ(e.target.value)}
               className="h-10 w-[240px] max-w-full rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
               placeholder="Buscar..."
-              onKeyDown={(e) => { if (e.key === 'Enter') loadItems(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') loadItems();
+              }}
             />
 
             <button
@@ -1088,26 +1136,33 @@ export default function AdminUtilitiesPage() {
             </div>
 
             <div className="flex flex-wrap gap-2">
-              {visibleTagsForSidebar.length ? visibleTagsForSidebar.map((t) => {
-                const selected = selectedTagIds.includes(t.id);
-                return (
-                  <button
-                    key={t.id}
-                    type="button"
-                    onClick={() => toggleSelectedTag(t.id)}
-                    className={cx(
-                      'rounded-full border px-3 h-8 text-xs transition',
-                      selected ? 'bg-white/[0.08] border-white/20 text-white' : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
-                    )}
-                    title="Filtrar por tag"
-                  >
-                    <span className="inline-flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
-                      {t.name}
-                    </span>
-                  </button>
-                );
-              }) : (
+              {visibleTagsForSidebar.length ? (
+                visibleTagsForSidebar.map((t) => {
+                  const selected = selectedTagIds.includes(t.id);
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => toggleSelectedTag(t.id)}
+                      className={cx(
+                        'rounded-full border px-3 h-8 text-xs transition',
+                        selected
+                          ? 'bg-white/[0.08] border-white/20 text-white'
+                          : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                      )}
+                      title="Filtrar por tag"
+                    >
+                      <span className="inline-flex items-center gap-2">
+                        <span
+                          className="h-2.5 w-2.5 rounded-full"
+                          style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
+                        />
+                        {t.name}
+                      </span>
+                    </button>
+                  );
+                })
+              ) : (
                 <div className="text-white/45 text-xs">Sem tags visíveis.</div>
               )}
             </div>
@@ -1181,9 +1236,7 @@ export default function AdminUtilitiesPage() {
             >
               <div className="p-5 border-b border-white/10 flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-white/90 font-semibold tracking-tight">
-                    {editingId ? 'Editar utilidade' : 'Nova utilidade'}
-                  </div>
+                  <div className="text-white/90 font-semibold tracking-tight">{editingId ? 'Editar utilidade' : 'Nova utilidade'}</div>
                   <div className="text-white/45 text-sm mt-1">Nome + link + imagem + descrição + pasta + tags.</div>
                 </div>
 
@@ -1199,9 +1252,7 @@ export default function AdminUtilitiesPage() {
 
               <div className="p-5">
                 {modalErr ? (
-                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
-                    {modalErr}
-                  </div>
+                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{modalErr}</div>
                 ) : null}
 
                 <div className="grid grid-cols-12 gap-4">
@@ -1244,7 +1295,9 @@ export default function AdminUtilitiesPage() {
                     >
                       <option value="">(Meu Drive)</option>
                       {flattenFolders(folders).map((f) => (
-                        <option key={f.id} value={f.id}>{f.label}</option>
+                        <option key={f.id} value={f.id}>
+                          {f.label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -1258,14 +1311,19 @@ export default function AdminUtilitiesPage() {
                           <button
                             key={t.id}
                             type="button"
-                            onClick={() => setTagIdsForItem((p) => sel ? p.filter((x) => x !== t.id) : [...p, t.id])}
+                            onClick={() => setTagIdsForItem((p) => (sel ? p.filter((x) => x !== t.id) : [...p, t.id]))}
                             className={cx(
                               'h-9 px-3 rounded-full border transition text-xs',
-                              sel ? 'bg-white/[0.08] border-white/20 text-white' : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                              sel
+                                ? 'bg-white/[0.08] border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
                             )}
                           >
                             <span className="inline-flex items-center gap-2">
-                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
+                              <span
+                                className="h-2.5 w-2.5 rounded-full"
+                                style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
+                              />
                               {t.name}
                             </span>
                           </button>

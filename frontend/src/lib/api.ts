@@ -1,23 +1,11 @@
 // frontend/src/lib/api.ts
+export const API_BASE = '/api';
 
 export type ApiError = {
   statusCode?: number;
   message?: string | string[];
   error?: string;
 };
-
-const API_BASE = (() => {
-  const raw = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE ?? '').trim();
-  const low = raw.toLowerCase();
-  if (!raw || low === 'undefined' || low === 'null') return '';
-  return raw.replace(/\/+$/, '');
-})();
-
-function joinUrl(base: string, path: string) {
-  const p = path.startsWith('/') ? path : `/${path}`;
-  if (!base) return p; // fallback (dev local)
-  return `${base}${p}`;
-}
 
 export async function apiFetch<T>(
   path: string,
@@ -31,7 +19,7 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { method = 'GET', token = null, body, headers = {}, cache = 'no-store' } = opts;
 
-  const res = await fetch(joinUrl(API_BASE, path), {
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     cache,
     headers: {
@@ -61,7 +49,7 @@ export async function apiUpload<T>(
 ): Promise<T> {
   const { token, formData, method = 'POST' } = opts;
 
-  const res = await fetch(joinUrl(API_BASE, path), {
+  const res = await fetch(`${API_BASE}${path}`, {
     method,
     headers: { Authorization: `Bearer ${token}` },
     body: formData,
