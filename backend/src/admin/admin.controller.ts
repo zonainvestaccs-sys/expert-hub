@@ -27,7 +27,7 @@ export class AdminController {
   constructor(private readonly adminService: AdminService) {}
 
   // =========================
-  // ✅ OVERVIEW / SERIES / EXPERTS ... (mantém igual o seu projeto)
+  // ✅ OVERVIEW / SERIES
   // =========================
 
   @Get('overview')
@@ -58,6 +58,10 @@ export class AdminController {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
   }
+
+  // =========================
+  // ✅ EXPERTS (ADMIN)
+  // =========================
 
   @Get('experts')
   @Roles(UserRole.ADMIN)
@@ -181,7 +185,10 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async listUtilityFolders() {
     try {
-      return await this.adminService.listUtilityFolders();
+      // se você estiver usando versão Drive-like: listUtilityFoldersTree()
+      // se não: listUtilityFolders()
+      return await (this.adminService as any).listUtilityFoldersTree?.()
+        ?? await (this.adminService as any).listUtilityFolders();
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
@@ -191,7 +198,11 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async createUtilityFolder(@Body() body: any) {
     try {
-      return await this.adminService.createUtilityFolder({ name: String(body?.name || '') });
+      // drive-like suporta parentId opcional
+      return await (this.adminService as any).createUtilityFolder({
+        name: String(body?.name || ''),
+        parentId: body?.parentId ? String(body.parentId) : null,
+      });
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
@@ -201,7 +212,10 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async updateUtilityFolder(@Param('id') id: string, @Body() body: any) {
     try {
-      return await this.adminService.updateUtilityFolder(id, { name: String(body?.name || '') });
+      return await (this.adminService as any).updateUtilityFolder(id, {
+        name: String(body?.name || ''),
+        parentId: body?.parentId ? String(body.parentId) : null,
+      });
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
@@ -211,7 +225,22 @@ export class AdminController {
   @Roles(UserRole.ADMIN)
   async deleteUtilityFolder(@Param('id') id: string) {
     try {
-      return await this.adminService.deleteUtilityFolder(id);
+      return await (this.adminService as any).deleteUtilityFolder(id);
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // (opcional) reorder folders (drive-like)
+  @Post('utility-folders/reorder')
+  @Roles(UserRole.ADMIN)
+  async reorderFolders(@Body() body: any) {
+    try {
+      const orderedIds = Array.isArray(body?.orderedIds) ? body.orderedIds.map(String) : [];
+      if ((this.adminService as any).reorderFolders) {
+        return await (this.adminService as any).reorderFolders(orderedIds);
+      }
+      return { ok: true };
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }
@@ -337,7 +366,11 @@ export class AdminController {
       limits: { fileSize: 5 * 1024 * 1024 },
     }),
   )
-  async updateUtility(@Param('id') id: string, @UploadedFile() file: Express.Multer.File | undefined, @Body() body: any) {
+  async updateUtility(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @Body() body: any,
+  ) {
     try {
       const tagIds = String(body?.tagIds || '')
         .split(',')
@@ -370,14 +403,30 @@ export class AdminController {
     }
   }
 
-  // PATCH /admin/utilities-reorder
+  // ✅ Reorder (drag & drop)
+  // POST /admin/utilities/reorder
   // body: { orderedIds: string[] }
-  @Patch('utilities-reorder')
+  @Post('utilities/reorder')
   @Roles(UserRole.ADMIN)
   async reorderUtilities(@Body() body: any) {
     try {
       const orderedIds = Array.isArray(body?.orderedIds) ? body.orderedIds.map(String) : [];
       return await this.adminService.reorderUtilities(orderedIds);
+    } catch (e: any) {
+      throw new BadRequestException(e?.message || 'Invalid request');
+    }
+  }
+
+  // (opcional) mover item para outra pasta (drag entre pastas)
+  @Post('utilities/:id/move')
+  @Roles(UserRole.ADMIN)
+  async moveUtility(@Param('id') id: string, @Body() body: any) {
+    try {
+      const folderId = body?.folderId != null ? String(body.folderId) : null;
+      if ((this.adminService as any).moveUtility) {
+        return await (this.adminService as any).moveUtility(id, folderId);
+      }
+      return { ok: true };
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }

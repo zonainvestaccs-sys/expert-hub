@@ -319,62 +319,64 @@ model UtilityFolder {
   id         String   @id @default(cuid())
   name       String
   orderIndex Int      @default(0)
+
+  // ✅ Google Drive style: árvore (hierarquia)
+  parentId   String?
+  parent     UtilityFolder? @relation("UtilityFolderTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children   UtilityFolder[] @relation("UtilityFolderTree")
+
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  links UtilityLink[]
+  utilities  UtilityLink[]
 
-  @@unique([name])
-  @@index([orderIndex])
+  @@index([parentId, orderIndex])
+  @@index([parentId, name])
 }
 
 model UtilityTag {
   id        String   @id @default(cuid())
-  name      String
-  color     String?  // opcional (ex: "#6A5CFF")
+  name      String   @unique
+  color     String?  // ex "#7C3AED"
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  links UtilityLinkTag[]
-
-  @@unique([name])
-  @@index([name])
+  links     UtilityLinkTag[]
 }
 
 model UtilityLinkTag {
+  id        String     @id @default(cuid())
   utilityId String
   tagId     String
 
-  utility UtilityLink @relation(fields: [utilityId], references: [id], onDelete: Cascade)
-  tag     UtilityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  utility   UtilityLink @relation(fields: [utilityId], references: [id], onDelete: Cascade)
+  tag       UtilityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-
-  @@id([utilityId, tagId])
+  @@unique([utilityId, tagId])
   @@index([tagId])
+  @@index([utilityId])
 }
 
 model UtilityLink {
-  id          String   @id @default(cuid())
-  name        String
-  url         String
+  id        String   @id @default(cuid())
+  name      String
+  url       String
   description String?
-  imageUrl    String?
+  imageUrl  String?
 
-  // ✅ organização
-  folderId    String?
-  folder      UtilityFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  // ✅ pasta
+  folderId  String?
+  folder    UtilityFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
 
-  // ✅ ordenação (drag & drop)
-  orderIndex  Int @default(0)
+  // ✅ order p/ drag
+  orderIndex Int @default(0)
 
-  tags        UtilityLinkTag[]
+  tags      UtilityLinkTag[]
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([createdAt])
-  @@index([orderIndex])
   @@index([folderId, orderIndex])
 }
+
 

@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import {
   DndContext,
   DragEndEvent,
+  DragOverlay,
   PointerSensor,
   useSensor,
   useSensors,
@@ -21,8 +22,8 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-type Folder = { id: string; name: string; orderIndex: number };
-type Tag = { id: string; name: string; color?: string | null };
+type UtilityTag = { id: string; name: string; color?: string | null };
+type UtilityFolderNode = { id: string; name: string; parentId?: string | null; orderIndex: number; children: UtilityFolderNode[] };
 
 type UtilityItem = {
   id: string;
@@ -32,7 +33,9 @@ type UtilityItem = {
   imageUrl?: string | null;
   folderId?: string | null;
   orderIndex?: number;
-  tags?: Tag[];
+  tags?: UtilityTag[];
+  createdAt?: string | null;
+  updatedAt?: string | null;
 };
 
 function cx(...c: Array<string | false | null | undefined>) {
@@ -62,139 +65,145 @@ function normalizeUrl(input: string) {
   return `https://${v}`;
 }
 
-function Icon(props: { name: 'plus' | 'trash' | 'upload' | 'close' | 'edit' | 'folder' | 'tag' | 'search' | 'dots' }) {
+/** ===== ICONS ===== */
+function Icon(props: { name: 'plus' | 'trash' | 'edit' | 'refresh' | 'close' | 'upload' | 'folder' | 'tag' | 'chevR' | 'chevD' | 'dots' }) {
   const { name } = props;
+  const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' as const };
 
-  if (name === 'plus') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  if (name === 'plus') return (
+    <svg {...common}>
+      <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
 
-  if (name === 'trash') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path
-          d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
+  if (name === 'trash') return (
+    <svg {...common}>
+      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 
-  if (name === 'upload') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-        <path d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  if (name === 'edit') return (
+    <svg {...common}>
+      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path
+        d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 
-  if (name === 'close') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  if (name === 'refresh') return (
+    <svg {...common}>
+      <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
 
-  if (name === 'edit') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-        <path
-          d="M16.5 3.5a2.12 2.12 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
+  if (name === 'close') return (
+    <svg {...common}>
+      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
 
-  if (name === 'folder') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M3 7a2 2 0 0 1 2-2h5l2 2h9a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-      </svg>
-    );
-  }
+  if (name === 'upload') return (
+    <svg {...common}>
+      <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    </svg>
+  );
 
-  if (name === 'tag') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M20 13l-7 7-11-11V2h7l11 11Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-          strokeLinejoin="round"
-        />
-        <path d="M7.5 7.5h.01" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  if (name === 'folder') return (
+    <svg {...common}>
+      <path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    </svg>
+  );
 
-  if (name === 'search') {
-    return (
-      <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-        <path
-          d="M11 19a8 8 0 1 1 0-16 8 8 0 0 1 0 16Z"
-          stroke="currentColor"
-          strokeWidth="1.8"
-        />
-        <path d="M21 21l-4.2-4.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      </svg>
-    );
-  }
+  if (name === 'tag') return (
+    <svg {...common}>
+      <path d="M20 10V4h-6L4 14l6 6 10-10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <path d="M14.5 7.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    </svg>
+  );
 
-  // dots (drag handle)
+  if (name === 'chevR') return (
+    <svg {...common}>
+      <path d="M10 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
+  if (name === 'chevD') return (
+    <svg {...common}>
+      <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+
   return (
-    <svg className="inline-block" width="18" height="18" viewBox="0 0 24 24" fill="none">
-      <path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+    <svg {...common}>
+      <path d="M12 5h.01M12 12h.01M12 19h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
     </svg>
   );
 }
 
-function Pill({ children, active, onClick }: { children: React.ReactNode; active?: boolean; onClick?: () => void }) {
+/** ===== UI helpers ===== */
+function CardShell({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
   return (
-    <button
-      type="button"
+    <div
       onClick={onClick}
       className={cx(
-        'px-3 h-9 rounded-xl border text-sm transition whitespace-nowrap',
-        active ? 'border-white/20 bg-white/[0.08] text-white' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80',
+        'rounded-2xl border border-white/10',
+        'bg-gradient-to-b from-white/[0.055] to-white/[0.02]',
+        'shadow-[0_18px_70px_rgba(0,0,0,0.42)]',
+        'transition-all duration-200',
+        'hover:-translate-y-[1px] hover:border-white/20 hover:bg-white/[0.035]',
+        'hover:shadow-[0_26px_90px_rgba(0,0,0,0.55)]',
+        onClick && 'cursor-pointer',
+        'overflow-hidden',
       )}
     >
       {children}
-    </button>
+    </div>
   );
 }
 
-function SortableCard(props: {
-  item: UtilityItem;
-  onEdit: (it: UtilityItem) => void;
-  onDelete: (id: string) => void;
-}) {
-  const { item, onEdit, onDelete } = props;
+function Pill({ text, color }: { text: string; color?: string | null }) {
+  const bg = color ? `${color}22` : 'rgba(255,255,255,0.08)';
+  const bd = color ? `${color}55` : 'rgba(255,255,255,0.12)';
+  return (
+    <span
+      className="inline-flex items-center gap-2 px-2.5 h-7 rounded-full text-xs text-white/85 border"
+      style={{ background: bg, borderColor: bd }}
+      title={text}
+    >
+      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color || 'rgba(255,255,255,0.5)' }} />
+      <span className="truncate max-w-[140px]">{text}</span>
+    </span>
+  );
+}
 
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: item.id,
-  });
+/** ===== Sortable row (Drive-like list row) ===== */
+function SortableRow(props: {
+  item: UtilityItem;
+  onEdit: () => void;
+  onDelete: () => void;
+  onOpen: () => void;
+  hiddenTagIds: Set<string>;
+  setHiddenTagIds: (next: Set<string>) => void;
+}) {
+  const { item, onEdit, onDelete, onOpen, hiddenTagIds, setHiddenTagIds } = props;
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
@@ -204,124 +213,238 @@ function SortableCard(props: {
 
   const img = resolveImageUrl(item.imageUrl);
 
-  const open = () => {
-    const lk = normalizeUrl(item.url);
-    window.open(lk, '_blank', 'noopener,noreferrer');
-  };
-
   return (
-    <div ref={setNodeRef} style={style} className="group">
-      <div
-        className={cx(
-          'rounded-2xl border border-white/10 overflow-hidden',
-          'bg-gradient-to-b from-white/[0.055] to-white/[0.02]',
-          'shadow-[0_18px_70px_rgba(0,0,0,0.35)]',
-          'hover:-translate-y-[1px] hover:border-white/20 hover:bg-white/[0.035] hover:shadow-[0_26px_90px_rgba(0,0,0,0.48)]',
-          'transition-all duration-200',
-        )}
-      >
-        {/* Card inteiro clicável */}
-        <button
-          type="button"
-          onClick={open}
-          className="w-full text-left"
-          title="Abrir link"
+    <div ref={setNodeRef} style={style} className={cx('group', isDragging && 'z-50')}>
+      <div className={cx(
+        'rounded-2xl border border-white/10 bg-white/[0.02]',
+        'hover:bg-white/[0.04] hover:border-white/20 transition',
+        'px-3 py-3 flex items-center gap-3'
+      )}>
+        {/* drag handle */}
+        <div
+          {...attributes}
+          {...listeners}
+          className="shrink-0 h-10 w-10 rounded-xl border border-white/10 bg-black/20 grid place-items-center text-white/55 hover:text-white/80 cursor-grab active:cursor-grabbing"
+          title="Arrastar para reordenar"
+          onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-4 flex items-start gap-4">
-            {/* ✅ imagem maior */}
-            <div
-              className={cx(
-                'h-20 w-20 rounded-2xl border border-white/10 overflow-hidden shrink-0',
-                'bg-gradient-to-br from-[#3E78FF]/20 via-white/[0.06] to-[#6A5CFF]/18',
-              )}
-            >
-              {img ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={img} alt={item.name} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full grid place-items-center text-white/70">
-                  <Icon name="tag" />
-                </div>
-              )}
+          <Icon name="dots" />
+        </div>
+
+        {/* preview larger */}
+        <div
+          className="shrink-0 h-14 w-14 rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02]"
+          onClick={onOpen}
+          title="Abrir"
+        >
+          {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={item.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-white/60">
+              <Icon name="folder" />
+            </div>
+          )}
+        </div>
+
+        {/* content */}
+        <div className="min-w-0 flex-1" onClick={onOpen} title="Abrir">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-white/92 font-semibold truncate">{item.name}</div>
+              <div className="text-white/45 text-xs truncate mt-1">{item.url}</div>
+              {item.description ? <div className="text-white/55 text-xs mt-1 line-clamp-1">{item.description}</div> : null}
             </div>
 
-            {/* ✅ conteúdo compacto (não largão) */}
-            <div className="min-w-0 flex-1">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="text-white/92 font-semibold truncate">{item.name}</div>
-                  <div className="text-white/45 text-xs truncate mt-1">{item.url}</div>
-                </div>
-              </div>
+            {/* icon actions */}
+            <div className="shrink-0 flex items-center gap-2">
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onEdit(); }}
+                className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] transition grid place-items-center text-white/85"
+                title="Editar"
+                aria-label="Editar"
+              >
+                <Icon name="edit" />
+              </button>
 
-              {item.description ? (
-                <div className="text-white/55 text-sm mt-2 line-clamp-2">
-                  {item.description}
-                </div>
-              ) : null}
-
-              {item.tags?.length ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {item.tags.slice(0, 4).map((t) => (
-                    <span
-                      key={t.id}
-                      className="px-2 py-1 rounded-lg text-xs border border-white/10 bg-white/[0.03] text-white/75"
-                      title={t.name}
-                    >
-                      {t.name}
-                    </span>
-                  ))}
-                  {item.tags.length > 4 ? (
-                    <span className="px-2 py-1 rounded-lg text-xs border border-white/10 bg-white/[0.03] text-white/55">
-                      +{item.tags.length - 4}
-                    </span>
-                  ) : null}
-                </div>
-              ) : null}
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); onDelete(); }}
+                className="h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
+                title="Excluir"
+                aria-label="Excluir"
+              >
+                <Icon name="trash" />
+              </button>
             </div>
           </div>
-        </button>
 
-        {/* Ações (edit/delete/drag) */}
-        <div className="px-4 pb-4 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onEdit(item); }}
-              className="h-10 px-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/85 text-sm flex items-center gap-2"
-              title="Editar"
-            >
-              <Icon name="edit" />
-              Editar
-            </button>
+          {/* tags line */}
+          {item.tags?.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.tags.map((t) => (
+                <span key={t.id} onClick={(e) => e.stopPropagation()}>
+                  <Pill text={t.name} color={t.color} />
+                </span>
+              ))}
+            </div>
+          ) : null}
 
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(item.id); }}
-              className="h-10 px-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/85 text-sm flex items-center gap-2"
-              title="Excluir"
-            >
-              <Icon name="trash" />
-              Excluir
-            </button>
-          </div>
-
-          {/* drag handle */}
-          <button
-            type="button"
-            className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/80 grid place-items-center cursor-grab active:cursor-grabbing"
-            title="Arrastar"
-            {...attributes}
-            {...listeners}
-          >
-            <Icon name="dots" />
-          </button>
+          {/* sidebar tag preference: quick hide/unhide from sidebar (local only) */}
+          {item.tags?.length ? (
+            <div className="mt-2 text-[11px] text-white/40 flex flex-wrap gap-2">
+              {item.tags.map((t) => {
+                const hidden = hiddenTagIds.has(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const next = new Set(hiddenTagIds);
+                      if (hidden) next.delete(t.id);
+                      else next.add(t.id);
+                      setHiddenTagIds(next);
+                      localStorage.setItem('admin_util_hidden_tags', JSON.stringify(Array.from(next)));
+                    }}
+                    className={cx(
+                      'px-2 py-1 rounded-lg border transition',
+                      hidden
+                        ? 'border-white/10 bg-white/[0.02] text-white/45 hover:bg-white/[0.04]'
+                        : 'border-white/10 bg-white/[0.03] text-white/55 hover:bg-white/[0.06]',
+                    )}
+                    title={hidden ? 'Mostrar esta tag no sidebar' : 'Ocultar esta tag no sidebar'}
+                  >
+                    {hidden ? `Mostrar "${t.name}" no sidebar` : `Ocultar "${t.name}" no sidebar`}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
   );
 }
 
+/** ===== Folder tree (Drive-like sidebar) ===== */
+function FolderTree(props: {
+  roots: UtilityFolderNode[];
+  activeFolderId: string | null;
+  onOpenFolder: (folderId: string | null) => void;
+}) {
+  const { roots, activeFolderId, onOpenFolder } = props;
+
+  const [open, setOpen] = useState<Record<string, boolean>>({});
+
+  function Row({ node, depth }: { node: UtilityFolderNode; depth: number }) {
+    const hasKids = (node.children || []).length > 0;
+    const isOpen = open[node.id] ?? true;
+    const active = activeFolderId === node.id;
+
+    return (
+      <div>
+        <div
+          className={cx(
+            'flex items-center gap-2 rounded-xl px-2 py-2 cursor-pointer transition',
+            active ? 'bg-white/[0.06] border border-white/10' : 'hover:bg-white/[0.04]',
+          )}
+          style={{ paddingLeft: 8 + depth * 14 }}
+          onClick={() => onOpenFolder(node.id)}
+        >
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (!hasKids) return;
+              setOpen((p) => ({ ...p, [node.id]: !isOpen }));
+            }}
+            className={cx(
+              'h-7 w-7 rounded-lg grid place-items-center',
+              hasKids ? 'text-white/70 hover:bg-white/[0.06]' : 'text-white/20',
+            )}
+            aria-label="Expandir"
+            title={hasKids ? 'Expandir' : ''}
+          >
+            {hasKids ? <Icon name={isOpen ? 'chevD' : 'chevR'} /> : null}
+          </button>
+
+          <div className="text-white/85 text-sm truncate flex items-center gap-2">
+            <Icon name="folder" />
+            <span className="truncate">{node.name}</span>
+          </div>
+        </div>
+
+        {hasKids && isOpen ? (
+          <div className="mt-1 space-y-1">
+            {node.children.map((c) => <Row key={c.id} node={c} depth={depth + 1} />)}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div
+        className={cx(
+          'flex items-center gap-2 rounded-xl px-2 py-2 cursor-pointer transition',
+          activeFolderId === null ? 'bg-white/[0.06] border border-white/10' : 'hover:bg-white/[0.04]',
+        )}
+        onClick={() => onOpenFolder(null)}
+      >
+        <div className="h-7 w-7 rounded-lg grid place-items-center text-white/70">
+          <Icon name="folder" />
+        </div>
+        <div className="text-white/85 text-sm truncate">Meu Drive</div>
+      </div>
+
+      <div className="mt-2 space-y-1">
+        {roots.map((n) => <Row key={n.id} node={n} depth={0} />)}
+      </div>
+    </div>
+  );
+}
+
+/** ===== Breadcrumb ===== */
+function buildBreadcrumb(roots: UtilityFolderNode[], activeFolderId: string | null) {
+  if (!activeFolderId) return [{ id: null as any, name: 'Meu Drive' }];
+
+  const byId = new Map<string, UtilityFolderNode>();
+  const parent = new Map<string, string | null>();
+
+  const walk = (node: UtilityFolderNode) => {
+    byId.set(node.id, node);
+    (node.children || []).forEach((c) => {
+      parent.set(c.id, node.id);
+      walk(c);
+    });
+  };
+  roots.forEach((r) => {
+    parent.set(r.id, null);
+    walk(r);
+  });
+
+  const out: Array<{ id: string | null; name: string }> = [{ id: null, name: 'Meu Drive' }];
+
+  let cur: string | null = activeFolderId;
+  const stack: string[] = [];
+  while (cur) {
+    stack.push(cur);
+    cur = parent.get(cur) ?? null;
+  }
+  stack.reverse();
+
+  for (const id of stack) {
+    const node = byId.get(id);
+    if (node) out.push({ id: node.id, name: node.name });
+  }
+
+  return out;
+}
+
+/** ===== Page ===== */
 export default function AdminUtilitiesPage() {
   const router = useRouter();
   const tokenRef = useRef<string | null>(null);
@@ -329,81 +452,92 @@ export default function AdminUtilitiesPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  const [folders, setFolders] = useState<Folder[]>([]);
-  const [tags, setTags] = useState<Tag[]>([]);
-  const [items, setItems] = useState<UtilityItem[]>([]);
+  // drive state
+  const [folders, setFolders] = useState<UtilityFolderNode[]>([]);
+  const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
 
-  // filtros
-  const [activeFolderId, setActiveFolderId] = useState<string>(''); // '' = todos
+  // tags
+  const [tags, setTags] = useState<UtilityTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
+  const [hiddenTagIds, setHiddenTagIds] = useState<Set<string>>(new Set());
+
+  // list
+  const [items, setItems] = useState<UtilityItem[]>([]);
   const [q, setQ] = useState('');
 
-  // modais
-  const [openCreate, setOpenCreate] = useState(false);
-  const [openEdit, setOpenEdit] = useState(false);
-
-  const [creating, setCreating] = useState(false);
+  // create/edit modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [modalErr, setModalErr] = useState('');
 
-  const [formErr, setFormErr] = useState('');
-
-  // form fields
-  const [editId, setEditId] = useState<string>('');
   const [name, setName] = useState('');
   const [url, setUrl] = useState('');
-  const [description, setDescription] = useState('');
-  const [folderId, setFolderId] = useState<string>(''); // '' = sem pasta
-  const [tagIds, setTagIds] = useState<string[]>([]);
+  const [desc, setDesc] = useState('');
+  const [folderIdForItem, setFolderIdForItem] = useState<string | null>(null);
+  const [tagIdsForItem, setTagIdsForItem] = useState<string[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
 
-  const [newFolderName, setNewFolderName] = useState('');
-  const [newTagName, setNewTagName] = useState('');
+  // tags manager (color + delete)
+  const [tagsOpen, setTagsOpen] = useState(false);
+  const [tagName, setTagName] = useState('');
+  const [tagColor, setTagColor] = useState('#7C3AED');
+  const [tagSaving, setTagSaving] = useState(false);
+  const [tagErr, setTagErr] = useState('');
+
+  // folders menu
+  const [foldersOpen, setFoldersOpen] = useState(false);
+  const [folderName, setFolderName] = useState('');
+  const [folderParentId, setFolderParentId] = useState<string | null>(null);
+  const [folderSaving, setFolderSaving] = useState(false);
+  const [folderErr, setFolderErr] = useState('');
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // DnD
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
-  const loadBootstrap = useCallback(async () => {
+  const breadcrumb = useMemo(() => buildBreadcrumb(folders, activeFolderId), [folders, activeFolderId]);
+
+  /** ===== Load initial ===== */
+  const loadFolders = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) throw new Error('Sem token');
+    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/utility-folders', { token });
+    setFolders(Array.isArray(data?.items) ? data.items : []);
+  }, []);
+
+  const loadTags = useCallback(async () => {
+    const token = tokenRef.current;
+    if (!token) throw new Error('Sem token');
+    const data = await apiFetch<{ items: UtilityTag[] }>('/utility-tags', { token });
+    setTags(Array.isArray(data?.items) ? data.items : []);
+  }, []);
+
+  const loadItems = useCallback(async () => {
     setErr('');
     setLoading(true);
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      const [f, t] = await Promise.all([
-        apiFetch<{ items: Folder[] }>('/admin/utility-folders', { token }),
-        apiFetch<{ items: Tag[] }>('/admin/utility-tags', { token }),
-      ]);
-
-      setFolders(Array.isArray(f?.items) ? f.items : []);
-      setTags(Array.isArray(t?.items) ? t.items : []);
-    } catch (e: any) {
-      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao carregar dados';
-      setErr(msg);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const loadItems = useCallback(async () => {
-    setErr('');
-    try {
-      const token = tokenRef.current;
-      if (!token) throw new Error('Sem token');
-
       const params = new URLSearchParams();
       if (activeFolderId) params.set('folderId', activeFolderId);
-      if (selectedTagIds.length) params.set('tagIds', selectedTagIds.join(','));
+      // root: não passa folderId e backend retorna folderId=null
       if (q.trim()) params.set('q', q.trim());
+      if (selectedTagIds.length) params.set('tagIds', selectedTagIds.join(','));
 
-      const data = await apiFetch<{ items: UtilityItem[] }>(`/admin/utilities?${params.toString()}`, { token });
+      const data = await apiFetch<{ items: UtilityItem[] }>(`/utilities?${params.toString()}`, { token });
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao carregar utilidades';
       setErr(msg);
+    } finally {
+      setLoading(false);
     }
-  }, [activeFolderId, selectedTagIds, q]);
+  }, [activeFolderId, q, selectedTagIds]);
 
   useEffect(() => {
     const t = getToken();
@@ -413,70 +547,74 @@ export default function AdminUtilitiesPage() {
       return;
     }
     tokenRef.current = t;
-    loadBootstrap().then(() => loadItems());
-  }, [router, loadBootstrap, loadItems]);
 
-  useEffect(() => {
-    // recarrega quando filtros mudam
-    if (!tokenRef.current) return;
-    loadItems();
-  }, [activeFolderId, selectedTagIds, q, loadItems]);
+    // hidden tags local pref
+    try {
+      const raw = localStorage.getItem('admin_util_hidden_tags');
+      if (raw) {
+        const ids = JSON.parse(raw);
+        if (Array.isArray(ids)) setHiddenTagIds(new Set(ids.map(String)));
+      }
+    } catch {}
 
-  function resetForm() {
-    setFormErr('');
-    setEditId('');
+    (async () => {
+      await Promise.all([loadFolders(), loadTags()]);
+      await loadItems();
+    })();
+  }, [router, loadFolders, loadTags, loadItems]);
+
+  /** ===== Modal helpers ===== */
+  function resetModal() {
+    setModalErr('');
+    setEditingId(null);
     setName('');
     setUrl('');
-    setDescription('');
-    setFolderId('');
-    setTagIds([]);
+    setDesc('');
+    setFolderIdForItem(activeFolderId);
+    setTagIdsForItem([]);
     setFile(null);
     if (preview) URL.revokeObjectURL(preview);
     setPreview('');
-    setNewFolderName('');
-    setNewTagName('');
   }
 
-  function openCreateModal() {
-    resetForm();
-    setOpenCreate(true);
-    setOpenEdit(false);
+  function openCreate() {
+    resetModal();
+    setFolderIdForItem(activeFolderId);
+    setModalOpen(true);
   }
 
-  function openEditModal(it: UtilityItem) {
-    resetForm();
-    setEditId(it.id);
+  function openEdit(it: UtilityItem) {
+    resetModal();
+    setEditingId(it.id);
     setName(it.name || '');
     setUrl(it.url || '');
-    setDescription(it.description || '');
-    setFolderId(it.folderId || '');
-    setTagIds((it.tags || []).map((x) => x.id));
-    setOpenEdit(true);
-    setOpenCreate(false);
+    setDesc(it.description || '');
+    setFolderIdForItem(it.folderId ?? null);
+    setTagIdsForItem((it.tags || []).map((t) => t.id));
+    setModalOpen(true);
   }
 
   function closeModal() {
-    setOpenCreate(false);
-    setOpenEdit(false);
-    resetForm();
+    setModalOpen(false);
+    resetModal();
   }
 
   function pickFile() {
-    setFormErr('');
+    setModalErr('');
     fileInputRef.current?.click();
   }
 
   function onFileSelected(f?: File) {
-    setFormErr('');
+    setModalErr('');
     if (!f) return;
 
     const allowed = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp'];
     if (!allowed.includes(f.type)) {
-      setFormErr('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+      setModalErr('Arquivo inválido. Envie png/jpg/jpeg/webp.');
       return;
     }
     if (f.size > 5 * 1024 * 1024) {
-      setFormErr('Arquivo muito grande. Limite: 5MB.');
+      setModalErr('Arquivo muito grande. Limite: 5MB.');
       return;
     }
 
@@ -486,331 +624,554 @@ export default function AdminUtilitiesPage() {
     setFile(f);
   }
 
-  async function createFolderQuick() {
-    const token = tokenRef.current;
-    if (!token) return;
-
-    const nm = newFolderName.trim();
-    if (!nm) return;
-
-    const created = await apiFetch<Folder>('/admin/utility-folders', {
-      token,
-      method: 'POST',
-      body: { name: nm },
-    });
-
-    setFolders((prev) => [...prev, created].sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0)));
-    setFolderId(created.id);
-    setNewFolderName('');
-  }
-
-  async function createTagQuick() {
-    const token = tokenRef.current;
-    if (!token) return;
-
-    const nm = newTagName.trim();
-    if (!nm) return;
-
-    const created = await apiFetch<Tag>('/admin/utility-tags', {
-      token,
-      method: 'POST',
-      body: { name: nm },
-    });
-
-    setTags((prev) => [...prev, created].sort((a, b) => String(a.name).localeCompare(String(b.name))));
-    setTagIds((prev) => (prev.includes(created.id) ? prev : [...prev, created.id]));
-    setNewTagName('');
-  }
-
-  async function onCreate() {
-    setFormErr('');
-    setCreating(true);
-    try {
-      const token = tokenRef.current;
-      if (!token) throw new Error('Sem token');
-
-      const nm = name.trim();
-      const lk = normalizeUrl(url);
-      const desc = description.trim();
-
-      if (!nm) throw new Error('Preencha o nome.');
-      if (!lk) throw new Error('Preencha o link.');
-
-      const fd = new FormData();
-      fd.append('name', nm);
-      fd.append('url', lk);
-      fd.append('description', desc);
-      fd.append('folderId', folderId || '');
-      fd.append('tagIds', tagIds.join(','));
-      if (file) fd.append('file', file);
-
-      await apiUpload<UtilityItem>('/admin/utilities', { token, formData: fd, method: 'POST' });
-      closeModal();
-      await loadItems();
-    } catch (e: any) {
-      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao criar utilidade';
-      setFormErr(msg);
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  async function onSaveEdit() {
-    setFormErr('');
+  async function saveUtility() {
+    setModalErr('');
     setSaving(true);
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
-      if (!editId) throw new Error('ID inválido');
 
       const nm = name.trim();
       const lk = normalizeUrl(url);
-      const desc = description.trim();
-
       if (!nm) throw new Error('Preencha o nome.');
       if (!lk) throw new Error('Preencha o link.');
 
       const fd = new FormData();
       fd.append('name', nm);
       fd.append('url', lk);
-      fd.append('description', desc);
-      fd.append('folderId', folderId || '');
-      fd.append('tagIds', tagIds.join(','));
+      fd.append('description', desc || '');
+      if (folderIdForItem) fd.append('folderId', folderIdForItem);
+      fd.append('tagIds', tagIdsForItem.join(','));
       if (file) fd.append('file', file);
 
-      await apiUpload<UtilityItem>(`/admin/utilities/${encodeURIComponent(editId)}`, { token, formData: fd, method: 'PATCH' });
+      if (!editingId) {
+        await apiUpload<UtilityItem>('/utilities', { token, formData: fd, method: 'POST' });
+      } else {
+        await apiUpload<UtilityItem>(`/utilities/${encodeURIComponent(editingId)}`, { token, formData: fd, method: 'PATCH' });
+      }
+
       closeModal();
       await loadItems();
     } catch (e: any) {
-      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao salvar';
-      setFormErr(msg);
+      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao salvar utilidade';
+      setModalErr(msg);
     } finally {
       setSaving(false);
     }
   }
 
-  async function onDelete(id: string) {
-    const ok = window.confirm('Excluir esta utilidade?');
+  async function removeUtility(id: string) {
+    const ok = window.confirm('Tem certeza que deseja excluir esta utilidade?');
     if (!ok) return;
 
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      await apiFetch(`/admin/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+      await apiFetch(`/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
       setItems((prev) => prev.filter((x) => x.id !== id));
     } catch (e: any) {
-      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir';
+      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir utilidade';
       window.alert(msg);
     }
   }
 
-  function toggleFilterTag(id: string) {
-    setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  function openLink(u: string) {
+    const lk = normalizeUrl(u);
+    window.open(lk, '_blank', 'noopener,noreferrer');
   }
 
-  function toggleFormTag(id: string) {
-    setTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  /** ===== Top filters ===== */
+  const visibleTagsForSidebar = useMemo(() => {
+    // tags list display = not hidden by preference
+    return tags.filter((t) => !hiddenTagIds.has(t.id));
+  }, [tags, hiddenTagIds]);
+
+  function toggleSelectedTag(id: string) {
+    setSelectedTagIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   }
 
-  async function persistReorder(next: UtilityItem[]) {
-    const token = tokenRef.current;
-    if (!token) return;
-
-    const orderedIds = next.map((x) => x.id);
-    await apiFetch('/admin/utilities-reorder', {
-      token,
-      method: 'PATCH',
-      body: { orderedIds },
-    });
+  /** ===== Folder nav ===== */
+  function openFolder(folderId: string | null) {
+    setActiveFolderId(folderId);
+    // reset filters optional? keep tags selection and q
+    // reload
+    setTimeout(() => loadItems(), 0);
   }
 
+  /** ===== DnD reorder ===== */
   async function onDragEnd(e: DragEndEvent) {
-    const activeId = String(e.active?.id || '');
-    const overId = String(e.over?.id || '');
-    if (!activeId || !overId || activeId === overId) return;
+    const { active, over } = e;
+    setActiveDragId(null);
 
-    const oldIndex = items.findIndex((x) => x.id === activeId);
-    const newIndex = items.findIndex((x) => x.id === overId);
+    if (!over) return;
+    if (active.id === over.id) return;
+
+    const oldIndex = items.findIndex((x) => x.id === active.id);
+    const newIndex = items.findIndex((x) => x.id === over.id);
     if (oldIndex < 0 || newIndex < 0) return;
 
     const next = arrayMove(items, oldIndex, newIndex);
     setItems(next);
 
+    // persist
     try {
-      await persistReorder(next);
-    } catch (err: any) {
-      // fallback: recarrega do servidor
+      const token = tokenRef.current;
+      if (!token) return;
+      await apiFetch('/utilities/reorder', {
+        token,
+        method: 'POST',
+        body: { orderedIds: next.map((x) => x.id) },
+      });
+    } catch {
+      // fallback reload
       await loadItems();
     }
   }
 
-  const showModal = openCreate || openEdit;
+  /** ===== Tags manager ===== */
+  async function createTag() {
+    setTagErr('');
+    setTagSaving(true);
+    try {
+      const token = tokenRef.current;
+      if (!token) throw new Error('Sem token');
 
+      const nm = tagName.trim();
+      if (!nm) throw new Error('Nome da tag obrigatório');
+
+      await apiFetch('/utility-tags', {
+        token,
+        method: 'POST',
+        body: { name: nm, color: tagColor },
+      });
+
+      setTagName('');
+      await loadTags();
+    } catch (e: any) {
+      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao criar tag';
+      setTagErr(msg);
+    } finally {
+      setTagSaving(false);
+    }
+  }
+
+  async function deleteTag(tagId: string) {
+    const ok = window.confirm('Excluir tag? Ela será removida das utilidades.');
+    if (!ok) return;
+
+    try {
+      const token = tokenRef.current;
+      if (!token) throw new Error('Sem token');
+      await apiFetch(`/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
+      await loadTags();
+      setSelectedTagIds((p) => p.filter((x) => x !== tagId));
+    } catch (e: any) {
+      window.alert(typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir tag');
+    }
+  }
+
+  /** ===== Folders manager ===== */
+  async function createFolder() {
+    setFolderErr('');
+    setFolderSaving(true);
+    try {
+      const token = tokenRef.current;
+      if (!token) throw new Error('Sem token');
+
+      const nm = folderName.trim();
+      if (!nm) throw new Error('Nome da pasta obrigatório');
+
+      await apiFetch('/utility-folders', {
+        token,
+        method: 'POST',
+        body: { name: nm, parentId: folderParentId },
+      });
+
+      setFolderName('');
+      setFolderParentId(activeFolderId); // convenience
+      await loadFolders();
+    } catch (e: any) {
+      const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao criar pasta';
+      setFolderErr(msg);
+    } finally {
+      setFolderSaving(false);
+    }
+  }
+
+  /** ===== Layout ===== */
   return (
     <div className="relative">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-white/92 font-semibold tracking-tight text-[18px]">Utilidades</div>
-          <div className="text-white/45 text-sm mt-1">
-            Organize links por pasta, tags, filtro e ordem (arraste para reorganizar).
-          </div>
-        </div>
+      {/* TOP BAR: title + breadcrumb + top menus */}
+      <div className="flex flex-col gap-3">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+          <div className="min-w-0">
+            <div className="text-white/92 font-semibold tracking-tight text-[18px]">Utilidades</div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => loadItems()}
-            className={cx(
-              'h-10 px-4 rounded-xl border border-white/10',
-              'bg-white/[0.03] hover:bg-white/[0.06] transition',
-              'text-white/85 text-sm font-medium',
-            )}
-          >
-            Atualizar
-          </button>
-
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className={cx(
-              'h-10 px-4 rounded-xl border border-white/10',
-              'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
-              'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
-              'text-sm font-medium flex items-center gap-2',
-            )}
-          >
-            <Icon name="plus" />
-            Nova utilidade
-          </button>
-        </div>
-      </div>
-
-      {err ? (
-        <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
-      ) : null}
-
-      <div className="mt-5 grid grid-cols-12 gap-4">
-        {/* Sidebar (pastas + filtros) */}
-        <div className="col-span-12 lg:col-span-3">
-          <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-            <div className="text-white/85 text-sm font-semibold flex items-center gap-2">
-              <Icon name="folder" />
-              Pastas
-            </div>
-
-            <div className="mt-3 flex flex-col gap-2">
-              <button
-                type="button"
-                onClick={() => setActiveFolderId('')}
-                className={cx(
-                  'h-10 px-3 rounded-xl border text-sm text-left transition',
-                  activeFolderId === '' ? 'border-white/20 bg-white/[0.08] text-white' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80',
-                )}
-              >
-                Todas
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setActiveFolderId('')}
-                className="hidden"
-              />
-
-              {(folders || []).map((f) => (
+            {/* breadcrumb like Drive */}
+            <div className="mt-2 flex flex-wrap items-center gap-1 text-xs text-white/55">
+              {breadcrumb.map((b, idx) => (
                 <button
-                  key={f.id}
+                  key={idx}
                   type="button"
-                  onClick={() => setActiveFolderId(f.id)}
+                  onClick={() => openFolder(b.id)}
                   className={cx(
-                    'h-10 px-3 rounded-xl border text-sm text-left transition truncate',
-                    activeFolderId === f.id ? 'border-white/20 bg-white/[0.08] text-white' : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] text-white/80',
+                    'px-2 py-1 rounded-lg hover:bg-white/[0.05] transition',
+                    idx === breadcrumb.length - 1 && 'bg-white/[0.05] border border-white/10 text-white/80',
                   )}
-                  title={f.name}
                 >
-                  {f.name}
+                  {b.name}
                 </button>
               ))}
             </div>
+          </div>
 
-            <div className="mt-4 border-t border-white/10 pt-4">
-              <div className="text-white/85 text-sm font-semibold flex items-center gap-2">
-                <Icon name="tag" />
-                Tags (filtro)
-              </div>
+          {/* menus at top, beside Atualizar and + */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Folder menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setFoldersOpen((v) => !v)}
+                className={cx(
+                  'h-10 px-4 rounded-xl border border-white/10',
+                  'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                  'text-white/85 text-sm font-medium flex items-center gap-2',
+                )}
+              >
+                <Icon name="folder" />
+                Pastas
+              </button>
 
-              <div className="mt-3 flex flex-wrap gap-2">
-                {(tags || []).map((t) => (
-                  <Pill
-                    key={t.id}
-                    active={selectedTagIds.includes(t.id)}
-                    onClick={() => toggleFilterTag(t.id)}
-                  >
-                    {t.name}
-                  </Pill>
-                ))}
-              </div>
+              {foldersOpen ? (
+                <div className="absolute right-0 mt-2 w-[320px] rounded-2xl border border-white/10 bg-[#0B1022]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.70)] p-3 z-50">
+                  {folderErr ? <div className="mb-2 text-xs text-red-200">{folderErr}</div> : null}
 
-              <div className="mt-4">
-                <div className="text-white/55 text-xs mb-2">Busca</div>
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-xl border border-white/10 bg-white/[0.03] grid place-items-center text-white/70">
-                    <Icon name="search" />
+                  <div className="text-white/70 text-xs mb-2">Criar pasta (como Drive)</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={folderName}
+                      onChange={(e) => setFolderName(e.target.value)}
+                      className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none"
+                      placeholder="Nome da pasta"
+                    />
+                    <button
+                      type="button"
+                      onClick={createFolder}
+                      disabled={folderSaving}
+                      className={cx(
+                        'h-10 px-3 rounded-xl border border-white/10',
+                        'bg-white/[0.04] hover:bg-white/[0.08] transition text-white/85 text-sm',
+                        folderSaving && 'opacity-60 cursor-not-allowed',
+                      )}
+                    >
+                      Criar
+                    </button>
                   </div>
-                  <input
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                    className="h-10 w-full rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                    placeholder="Nome, link, descrição..."
-                  />
-                </div>
-              </div>
 
-              <div className="mt-4 flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setSelectedTagIds([]); setQ(''); }}
-                  className="h-10 px-4 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/85 text-sm"
-                >
-                  Limpar filtros
-                </button>
-              </div>
+                  <div className="text-white/45 text-[11px] mt-2">
+                    Parent: {activeFolderId ? 'Pasta atual' : 'Meu Drive'}
+                  </div>
+
+                  <div className="mt-3 h-px bg-white/10" />
+
+                  <div className="mt-3 text-white/70 text-xs mb-2">Navegação rápida</div>
+                  <div className="max-h-[280px] overflow-auto pr-1">
+                    <FolderTree roots={folders} activeFolderId={activeFolderId} onOpenFolder={(id) => { openFolder(id); setFoldersOpen(false); }} />
+                  </div>
+
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setFoldersOpen(false)}
+                      className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Tag menu */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setTagsOpen((v) => !v)}
+                className={cx(
+                  'h-10 px-4 rounded-xl border border-white/10',
+                  'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                  'text-white/85 text-sm font-medium flex items-center gap-2',
+                )}
+              >
+                <Icon name="tag" />
+                Tags
+                {selectedTagIds.length ? (
+                  <span className="ml-1 inline-flex h-6 px-2 rounded-full bg-white/[0.06] border border-white/10 text-xs text-white/80 items-center">
+                    {selectedTagIds.length}
+                  </span>
+                ) : null}
+              </button>
+
+              {tagsOpen ? (
+                <div className="absolute right-0 mt-2 w-[360px] rounded-2xl border border-white/10 bg-[#0B1022]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.70)] p-3 z-50">
+                  {tagErr ? <div className="mb-2 text-xs text-red-200">{tagErr}</div> : null}
+
+                  {/* create tag with color */}
+                  <div className="text-white/70 text-xs mb-2">Criar tag (com cor)</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      value={tagName}
+                      onChange={(e) => setTagName(e.target.value)}
+                      className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none"
+                      placeholder="Nome da tag"
+                    />
+                    <input
+                      type="color"
+                      value={tagColor}
+                      onChange={(e) => setTagColor(e.target.value)}
+                      className="h-10 w-12 rounded-xl border border-white/10 bg-black/30 p-1"
+                      title="Escolher cor"
+                    />
+                    <button
+                      type="button"
+                      onClick={createTag}
+                      disabled={tagSaving}
+                      className={cx(
+                        'h-10 px-3 rounded-xl border border-white/10',
+                        'bg-white/[0.04] hover:bg-white/[0.08] transition text-white/85 text-sm',
+                        tagSaving && 'opacity-60 cursor-not-allowed',
+                      )}
+                    >
+                      Criar
+                    </button>
+                  </div>
+
+                  <div className="mt-3 h-px bg-white/10" />
+
+                  <div className="mt-3 text-white/70 text-xs mb-2">Filtrar por tags</div>
+                  <div className="flex flex-wrap gap-2">
+                    {tags.map((t) => {
+                      const selected = selectedTagIds.includes(t.id);
+                      const hidden = hiddenTagIds.has(t.id);
+
+                      return (
+                        <div key={t.id} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => toggleSelectedTag(t.id)}
+                            className={cx(
+                              'h-8 px-3 rounded-full border transition text-xs',
+                              selected
+                                ? 'bg-white/[0.08] border-white/20 text-white'
+                                : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                            )}
+                            title="Filtrar"
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
+                              {t.name}
+                            </span>
+                          </button>
+
+                          {/* hide/show sidebar (local pref) */}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = new Set(hiddenTagIds);
+                              if (hidden) next.delete(t.id);
+                              else next.add(t.id);
+                              setHiddenTagIds(next);
+                              localStorage.setItem('admin_util_hidden_tags', JSON.stringify(Array.from(next)));
+                            }}
+                            className={cx(
+                              'h-8 px-2 rounded-xl border text-xs transition',
+                              hidden
+                                ? 'border-white/10 bg-white/[0.02] text-white/45 hover:bg-white/[0.04]'
+                                : 'border-white/10 bg-white/[0.03] text-white/60 hover:bg-white/[0.06]',
+                            )}
+                            title={hidden ? 'Tag oculta no sidebar' : 'Tag visível no sidebar'}
+                          >
+                            {hidden ? 'Oculta' : 'Sidebar'}
+                          </button>
+
+                          {/* delete */}
+                          <button
+                            type="button"
+                            onClick={() => deleteTag(t.id)}
+                            className="h-8 w-8 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
+                            title="Excluir tag"
+                            aria-label="Excluir tag"
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-3 flex justify-between items-center">
+                    <button
+                      type="button"
+                      onClick={() => { setSelectedTagIds([]); }}
+                      className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
+                    >
+                      Limpar filtros
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setTagsOpen(false)}
+                      className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
+                    >
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* search */}
+            <input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-10 w-[240px] max-w-full rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
+              placeholder="Buscar..."
+              onKeyDown={(e) => { if (e.key === 'Enter') loadItems(); }}
+            />
+
+            <button
+              type="button"
+              onClick={() => loadItems()}
+              className={cx(
+                'h-10 px-4 rounded-xl border border-white/10',
+                'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                'text-white/85 text-sm font-medium flex items-center gap-2',
+              )}
+            >
+              <Icon name="refresh" />
+              Atualizar
+            </button>
+
+            <button
+              type="button"
+              onClick={openCreate}
+              className={cx(
+                'h-10 px-4 rounded-xl border border-white/10',
+                'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
+                'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
+                'text-sm font-medium flex items-center gap-2',
+              )}
+            >
+              <Icon name="plus" />
+              Nova Utilidade
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* MAIN: Sidebar + list like Drive */}
+      <div className="mt-5 grid grid-cols-12 gap-4">
+        {/* Sidebar */}
+        <div className="col-span-12 lg:col-span-3">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-3">
+            <div className="text-white/75 text-xs mb-2 flex items-center gap-2">
+              <Icon name="folder" /> Pastas
+            </div>
+
+            <FolderTree roots={folders} activeFolderId={activeFolderId} onOpenFolder={openFolder} />
+
+            <div className="mt-4 h-px bg-white/10" />
+
+            <div className="mt-4 text-white/75 text-xs mb-2 flex items-center gap-2">
+              <Icon name="tag" /> Tags (sidebar)
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {visibleTagsForSidebar.length ? visibleTagsForSidebar.map((t) => {
+                const selected = selectedTagIds.includes(t.id);
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => toggleSelectedTag(t.id)}
+                    className={cx(
+                      'rounded-full border px-3 h-8 text-xs transition',
+                      selected ? 'bg-white/[0.08] border-white/20 text-white' : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                    )}
+                    title="Filtrar por tag"
+                  >
+                    <span className="inline-flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
+                      {t.name}
+                    </span>
+                  </button>
+                );
+              }) : (
+                <div className="text-white/45 text-xs">Sem tags visíveis.</div>
+              )}
             </div>
           </div>
         </div>
 
-        {/* Lista (drag & drop) */}
+        {/* List */}
         <div className="col-span-12 lg:col-span-9">
-          {loading ? (
-            <div className="h-[260px] rounded-2xl bg-white/[0.03] border border-white/10 animate-pulse" />
-          ) : items.length === 0 ? (
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-10 text-center text-white/55">
-              Nenhuma utilidade encontrada para os filtros atuais.
-            </div>
-          ) : (
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-              <SortableContext items={items.map((x) => x.id)} strategy={verticalListSortingStrategy}>
-                <div className="grid grid-cols-12 gap-4">
-                  {items.map((it) => (
-                    <div key={it.id} className="col-span-12 md:col-span-6 xl:col-span-4">
-                      <SortableCard item={it} onEdit={openEditModal} onDelete={onDelete} />
+          {err ? (
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
+          ) : null}
+
+          <div className="mt-0">
+            {loading ? (
+              <div className="h-[260px] rounded-2xl bg-white/[0.03] border border-white/10 animate-pulse" />
+            ) : items.length === 0 ? (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-10 text-center text-white/55">
+                Nenhuma utilidade aqui. Clique em <span className="text-white/80 font-medium">Nova Utilidade</span>.
+              </div>
+            ) : (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={(e) => setActiveDragId(String(e.active.id))}
+                onDragEnd={onDragEnd}
+                onDragCancel={() => setActiveDragId(null)}
+              >
+                <SortableContext items={items.map((x) => x.id)} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {items.map((it) => (
+                      <SortableRow
+                        key={it.id}
+                        item={it}
+                        onOpen={() => openLink(it.url)}
+                        onEdit={() => openEdit(it)}
+                        onDelete={() => removeUtility(it.id)}
+                        hiddenTagIds={hiddenTagIds}
+                        setHiddenTagIds={setHiddenTagIds}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+
+                <DragOverlay>
+                  {activeDragId ? (
+                    <div className="rounded-2xl border border-white/15 bg-[#0B1022]/95 px-4 py-3 text-white/85 shadow-[0_30px_120px_rgba(0,0,0,0.70)]">
+                      Arrastando…
                     </div>
-                  ))}
-                </div>
-              </SortableContext>
-            </DndContext>
-          )}
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* MODAL (CREATE/EDIT) */}
-      {showModal ? (
+      {/* MODAL create/edit — compact width */}
+      {modalOpen ? (
         <div className="fixed inset-0 z-[9999]">
           <div className="absolute inset-0 bg-black/60" onMouseDown={closeModal} aria-hidden="true" />
           <div className="absolute inset-0 grid place-items-center p-4" onMouseDown={closeModal}>
             <div
               className={cx(
-                'w-full max-w-[720px] rounded-2xl border border-white/10 overflow-hidden',
+                'w-full max-w-[560px] rounded-2xl border border-white/10 overflow-hidden',
                 'bg-[#0B1022]/95 backdrop-blur-xl',
                 'shadow-[0_30px_120px_rgba(0,0,0,0.70)]',
               )}
@@ -821,9 +1182,9 @@ export default function AdminUtilitiesPage() {
               <div className="p-5 border-b border-white/10 flex items-start justify-between gap-4">
                 <div>
                   <div className="text-white/90 font-semibold tracking-tight">
-                    {openEdit ? 'Editar utilidade' : 'Nova utilidade'}
+                    {editingId ? 'Editar utilidade' : 'Nova utilidade'}
                   </div>
-                  <div className="text-white/45 text-sm mt-1">Nome + link + descrição + pasta + tags + imagem.</div>
+                  <div className="text-white/45 text-sm mt-1">Nome + link + imagem + descrição + pasta + tags.</div>
                 </div>
 
                 <button
@@ -837,106 +1198,85 @@ export default function AdminUtilitiesPage() {
               </div>
 
               <div className="p-5">
-                {formErr ? (
+                {modalErr ? (
                   <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
-                    {formErr}
+                    {modalErr}
                   </div>
                 ) : null}
 
                 <div className="grid grid-cols-12 gap-4">
-                  <div className="col-span-12 md:col-span-8">
-                    <div>
-                      <div className="text-white/55 text-xs mb-2">Nome</div>
-                      <input
-                        value={name}
-                        onChange={(e) => setName(e.target.value)}
-                        className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                        placeholder="Ex: Google Ads"
-                      />
-                    </div>
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Nome</div>
+                    <input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
+                      placeholder="Ex: Google Ads"
+                    />
+                  </div>
 
-                    <div className="mt-3">
-                      <div className="text-white/55 text-xs mb-2">Link</div>
-                      <input
-                        value={url}
-                        onChange={(e) => setUrl(e.target.value)}
-                        className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                        placeholder="Ex: https://ads.google.com"
-                      />
-                    </div>
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Link</div>
+                    <input
+                      value={url}
+                      onChange={(e) => setUrl(e.target.value)}
+                      className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
+                      placeholder="Ex: https://ads.google.com"
+                    />
+                  </div>
 
-                    <div className="mt-3">
-                      <div className="text-white/55 text-xs mb-2">Descrição (opcional)</div>
-                      <textarea
-                        value={description}
-                        onChange={(e) => setDescription(e.target.value)}
-                        className="w-full min-h-[84px] rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white/85 text-sm outline-none focus:border-white/20 resize-none"
-                        placeholder="Ex: Link rápido para acessar campanhas e relatórios."
-                      />
-                    </div>
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Descrição</div>
+                    <textarea
+                      value={desc}
+                      onChange={(e) => setDesc(e.target.value)}
+                      className="w-full min-h-[90px] rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-white/85 text-sm outline-none focus:border-white/20"
+                      placeholder="Opcional..."
+                    />
+                  </div>
 
-                    <div className="mt-4 grid grid-cols-12 gap-3">
-                      <div className="col-span-12 md:col-span-6">
-                        <div className="text-white/55 text-xs mb-2">Pasta</div>
-                        <select
-                          value={folderId}
-                          onChange={(e) => setFolderId(e.target.value)}
-                          className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                        >
-                          <option value="">Sem pasta</option>
-                          {folders.map((f) => (
-                            <option key={f.id} value={f.id}>
-                              {f.name}
-                            </option>
-                          ))}
-                        </select>
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Pasta</div>
+                    <select
+                      value={folderIdForItem ?? ''}
+                      onChange={(e) => setFolderIdForItem(e.target.value ? e.target.value : null)}
+                      className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
+                    >
+                      <option value="">(Meu Drive)</option>
+                      {flattenFolders(folders).map((f) => (
+                        <option key={f.id} value={f.id}>{f.label}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                        <div className="mt-2 flex items-center gap-2">
-                          <input
-                            value={newFolderName}
-                            onChange={(e) => setNewFolderName(e.target.value)}
-                            className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                            placeholder="Criar pasta rápida…"
-                          />
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Tags</div>
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((t) => {
+                        const sel = tagIdsForItem.includes(t.id);
+                        return (
                           <button
+                            key={t.id}
                             type="button"
-                            onClick={createFolderQuick}
-                            className="h-10 px-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/85 text-sm"
+                            onClick={() => setTagIdsForItem((p) => sel ? p.filter((x) => x !== t.id) : [...p, t.id])}
+                            className={cx(
+                              'h-9 px-3 rounded-full border transition text-xs',
+                              sel ? 'bg-white/[0.08] border-white/20 text-white' : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                            )}
                           >
-                            <Icon name="plus" />
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="col-span-12 md:col-span-6">
-                        <div className="text-white/55 text-xs mb-2">Tags</div>
-                        <div className="flex flex-wrap gap-2">
-                          {tags.map((t) => (
-                            <Pill key={t.id} active={tagIds.includes(t.id)} onClick={() => toggleFormTag(t.id)}>
+                            <span className="inline-flex items-center gap-2">
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
                               {t.name}
-                            </Pill>
-                          ))}
-                        </div>
-
-                        <div className="mt-2 flex items-center gap-2">
-                          <input
-                            value={newTagName}
-                            onChange={(e) => setNewTagName(e.target.value)}
-                            className="flex-1 h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
-                            placeholder="Criar tag rápida…"
-                          />
-                          <button
-                            type="button"
-                            onClick={createTagQuick}
-                            className="h-10 px-3 rounded-xl border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition text-white/85 text-sm"
-                          >
-                            <Icon name="plus" />
+                            </span>
                           </button>
-                        </div>
-                      </div>
+                        );
+                      })}
                     </div>
+                  </div>
 
-                    <div className="mt-4 flex items-center gap-2">
+                  <div className="col-span-12">
+                    <div className="text-white/55 text-xs mb-2">Imagem</div>
+                    <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={pickFile}
@@ -947,7 +1287,7 @@ export default function AdminUtilitiesPage() {
                         )}
                       >
                         <Icon name="upload" />
-                        {file ? 'Trocar imagem' : 'Upload imagem (opcional)'}
+                        Upload (opcional)
                       </button>
 
                       <input
@@ -962,35 +1302,19 @@ export default function AdminUtilitiesPage() {
                         }}
                       />
 
-                      {file ? (
-                        <div className="text-white/60 text-sm truncate">{file.name}</div>
-                      ) : (
-                        <div className="text-white/45 text-sm">Nenhuma imagem selecionada</div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="col-span-12 md:col-span-4">
-                    <div className="text-white/55 text-xs mb-2">Prévia</div>
-                    <div
-                      className={cx(
-                        'rounded-2xl border border-white/10 overflow-hidden',
-                        'bg-gradient-to-br from-[#3E78FF]/15 via-white/[0.06] to-[#6A5CFF]/12',
-                        'h-[200px] w-full grid place-items-center',
-                      )}
-                    >
-                      {preview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={preview} alt="Prévia" className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="text-white/60 text-sm text-center px-4">
-                          Sem imagem<br /> (opcional)
-                        </div>
-                      )}
+                      {file ? <div className="text-white/60 text-sm truncate">{file.name}</div> : <div className="text-white/45 text-sm">Nenhuma</div>}
                     </div>
 
-                    <div className="text-white/45 text-xs mt-2">
-                      Aceita png/jpg/webp • até 5MB.
+                    <div className="mt-3">
+                      <div className="text-white/55 text-xs mb-2">Prévia</div>
+                      <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02] h-[180px] w-full grid place-items-center">
+                        {preview ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={preview} alt="Prévia" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="text-white/55 text-sm">Sem imagem</div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1004,38 +1328,20 @@ export default function AdminUtilitiesPage() {
                 >
                   Cancelar
                 </button>
-
-                {openEdit ? (
-                  <button
-                    type="button"
-                    onClick={onSaveEdit}
-                    disabled={saving}
-                    className={cx(
-                      'h-10 px-4 rounded-xl border border-white/10',
-                      'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
-                      'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
-                      'text-sm font-medium',
-                      saving && 'opacity-60 cursor-not-allowed',
-                    )}
-                  >
-                    {saving ? 'Salvando…' : 'Salvar alterações'}
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={onCreate}
-                    disabled={creating}
-                    className={cx(
-                      'h-10 px-4 rounded-xl border border-white/10',
-                      'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
-                      'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
-                      'text-sm font-medium',
-                      creating && 'opacity-60 cursor-not-allowed',
-                    )}
-                  >
-                    {creating ? 'Criando…' : 'Criar'}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={saveUtility}
+                  disabled={saving}
+                  className={cx(
+                    'h-10 px-4 rounded-xl border border-white/10',
+                    'bg-gradient-to-r from-[#3E78FF] to-[#6A5CFF] text-white',
+                    'shadow-[0_18px_70px_rgba(62,120,255,0.18)] hover:opacity-95 transition',
+                    'text-sm font-medium',
+                    saving && 'opacity-60 cursor-not-allowed',
+                  )}
+                >
+                  {saving ? 'Salvando…' : 'Salvar'}
+                </button>
               </div>
             </div>
           </div>
@@ -1043,4 +1349,15 @@ export default function AdminUtilitiesPage() {
       ) : null}
     </div>
   );
+}
+
+/** flatten folder tree for select */
+function flattenFolders(roots: UtilityFolderNode[]) {
+  const out: Array<{ id: string; label: string }> = [];
+  const walk = (n: UtilityFolderNode, depth: number) => {
+    out.push({ id: n.id, label: `${'— '.repeat(depth)}${n.name}` });
+    (n.children || []).forEach((c) => walk(c, depth + 1));
+  };
+  roots.forEach((r) => walk(r, 0));
+  return out;
 }
