@@ -48,12 +48,7 @@ function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(' ');
 }
 
-/**
- * Opcional:
- * Se você tiver NEXT_PUBLIC_API_URL (ex: https://api.seudominio.com)
- * isso ajuda a montar URL absoluta para imagens quando imageUrl vem como "/uploads/..."
- * Se não tiver, ele mantém o caminho relativo.
- */
+// se você usa imagens do backend (uploads), isso ajuda a resolver URL absoluta
 const API_PUBLIC_BASE = (() => {
   const raw = (process.env.NEXT_PUBLIC_API_URL ?? process.env.NEXT_PUBLIC_API_BASE ?? '').trim();
   const low = raw.toLowerCase();
@@ -201,7 +196,22 @@ function Icon(props: {
   );
 }
 
-/** ===== Sortable row (Drive-like list row) ===== */
+function Pill({ text, color }: { text: string; color?: string | null }) {
+  const bg = color ? `${color}22` : 'rgba(255,255,255,0.08)';
+  const bd = color ? `${color}55` : 'rgba(255,255,255,0.12)';
+  return (
+    <span
+      className="inline-flex items-center gap-2 px-2.5 h-7 rounded-full text-xs text-white/85 border"
+      style={{ background: bg, borderColor: bd }}
+      title={text}
+    >
+      <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color || 'rgba(255,255,255,0.5)' }} />
+      <span className="truncate max-w-[140px]">{text}</span>
+    </span>
+  );
+}
+
+/** ===== Sortable row ===== */
 function SortableRow(props: {
   item: UtilityItem;
   onEdit: () => void;
@@ -242,7 +252,7 @@ function SortableRow(props: {
           <Icon name="dots" />
         </div>
 
-        {/* preview larger */}
+        {/* preview */}
         <div
           className="shrink-0 h-14 w-14 rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02]"
           onClick={onOpen}
@@ -297,31 +307,18 @@ function SortableRow(props: {
             </div>
           </div>
 
-          {/* tags line */}
+          {/* tags */}
           {item.tags?.length ? (
             <div className="mt-2 flex flex-wrap gap-2">
               {item.tags.map((t) => (
                 <span key={t.id} onClick={(e) => e.stopPropagation()}>
-                  <span
-                    className="inline-flex items-center gap-2 px-2.5 h-7 rounded-full text-xs text-white/85 border"
-                    style={{
-                      background: t.color ? `${t.color}22` : 'rgba(255,255,255,0.08)',
-                      borderColor: t.color ? `${t.color}55` : 'rgba(255,255,255,0.12)',
-                    }}
-                    title={t.name}
-                  >
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-full"
-                      style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
-                    />
-                    <span className="truncate max-w-[140px]">{t.name}</span>
-                  </span>
+                  <Pill text={t.name} color={t.color} />
                 </span>
               ))}
             </div>
           ) : null}
 
-          {/* sidebar tag preference: quick hide/unhide from sidebar (local only) */}
+          {/* hide/unhide tags from sidebar (local pref) */}
           {item.tags?.length ? (
             <div className="mt-2 text-[11px] text-white/40 flex flex-wrap gap-2">
               {item.tags.map((t) => {
@@ -358,14 +355,13 @@ function SortableRow(props: {
   );
 }
 
-/** ===== Folder tree (Drive-like sidebar) ===== */
+/** ===== Folder tree ===== */
 function FolderTree(props: {
   roots: UtilityFolderNode[];
   activeFolderId: string | null;
   onOpenFolder: (folderId: string | null) => void;
 }) {
   const { roots, activeFolderId, onOpenFolder } = props;
-
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
   function Row({ node, depth }: { node: UtilityFolderNode; depth: number }) {
@@ -407,7 +403,11 @@ function FolderTree(props: {
         </div>
 
         {hasKids && isOpen ? (
-          <div className="mt-1 space-y-1">{node.children.map((c) => <Row key={c.id} node={c} depth={depth + 1} />)}</div>
+          <div className="mt-1 space-y-1">
+            {node.children.map((c) => (
+              <Row key={c.id} node={c} depth={depth + 1} />
+            ))}
+          </div>
         ) : null}
       </div>
     );
@@ -447,6 +447,7 @@ function buildBreadcrumb(roots: UtilityFolderNode[], activeFolderId: string | nu
       walk(c);
     });
   };
+
   roots.forEach((r) => {
     parent.set(r.id, null);
     walk(r);
@@ -505,7 +506,7 @@ export default function AdminUtilitiesPage() {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState('');
 
-  // tags manager (color + delete)
+  // tags manager
   const [tagsOpen, setTagsOpen] = useState(false);
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState('#7C3AED');
@@ -527,22 +528,31 @@ export default function AdminUtilitiesPage() {
 
   const breadcrumb = useMemo(() => buildBreadcrumb(folders, activeFolderId), [folders, activeFolderId]);
 
+  // ✅ rotas sempre com /admin
+  const ROUTES = useMemo(
+    () => ({
+      folders: '/admin/utility-folders',
+      tags: '/admin/utility-tags',
+      utilities: '/admin/utilities',
+      reorder: '/admin/utilities/reorder',
+    }),
+    [],
+  );
+
   /** ===== Load initial ===== */
   const loadFolders = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
-    // ✅ FIX: /admin/utility-folders
-    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/admin/utility-folders', { token });
+    const data = await apiFetch<{ items: UtilityFolderNode[] }>(ROUTES.folders, { token });
     setFolders(Array.isArray(data?.items) ? data.items : []);
-  }, []);
+  }, [ROUTES.folders]);
 
   const loadTags = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
-    // ✅ FIX: /admin/utility-tags
-    const data = await apiFetch<{ items: UtilityTag[] }>('/admin/utility-tags', { token });
+    const data = await apiFetch<{ items: UtilityTag[] }>(ROUTES.tags, { token });
     setTags(Array.isArray(data?.items) ? data.items : []);
-  }, []);
+  }, [ROUTES.tags]);
 
   const loadItems = useCallback(async () => {
     setErr('');
@@ -556,8 +566,7 @@ export default function AdminUtilitiesPage() {
       if (q.trim()) params.set('q', q.trim());
       if (selectedTagIds.length) params.set('tagIds', selectedTagIds.join(','));
 
-      // ✅ FIX: /admin/utilities
-      const data = await apiFetch<{ items: UtilityItem[] }>(`/admin/utilities?${params.toString()}`, { token });
+      const data = await apiFetch<{ items: UtilityItem[] }>(`${ROUTES.utilities}?${params.toString()}`, { token });
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao carregar utilidades';
@@ -565,7 +574,7 @@ export default function AdminUtilitiesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeFolderId, q, selectedTagIds]);
+  }, [ROUTES.utilities, activeFolderId, q, selectedTagIds]);
 
   useEffect(() => {
     const t = getToken();
@@ -672,11 +681,10 @@ export default function AdminUtilitiesPage() {
       fd.append('tagIds', tagIdsForItem.join(','));
       if (file) fd.append('file', file);
 
-      // ✅ FIX: /admin/utilities
       if (!editingId) {
-        await apiUpload<UtilityItem>('/admin/utilities', { token, formData: fd, method: 'POST' });
+        await apiUpload<UtilityItem>(ROUTES.utilities, { token, formData: fd, method: 'POST' });
       } else {
-        await apiUpload<UtilityItem>(`/admin/utilities/${encodeURIComponent(editingId)}`, {
+        await apiUpload<UtilityItem>(`${ROUTES.utilities}/${encodeURIComponent(editingId)}`, {
           token,
           formData: fd,
           method: 'PATCH',
@@ -701,8 +709,7 @@ export default function AdminUtilitiesPage() {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      // ✅ FIX: /admin/utilities/:id
-      await apiFetch(`/admin/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+      await apiFetch(`${ROUTES.utilities}/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
       setItems((prev) => prev.filter((x) => x.id !== id));
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir utilidade';
@@ -716,9 +723,7 @@ export default function AdminUtilitiesPage() {
   }
 
   /** ===== Top filters ===== */
-  const visibleTagsForSidebar = useMemo(() => {
-    return tags.filter((t) => !hiddenTagIds.has(t.id));
-  }, [tags, hiddenTagIds]);
+  const visibleTagsForSidebar = useMemo(() => tags.filter((t) => !hiddenTagIds.has(t.id)), [tags, hiddenTagIds]);
 
   function toggleSelectedTag(id: string) {
     setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -745,13 +750,10 @@ export default function AdminUtilitiesPage() {
     const next = arrayMove(items, oldIndex, newIndex);
     setItems(next);
 
-    // persist
     try {
       const token = tokenRef.current;
       if (!token) return;
-
-      // ✅ FIX: /admin/utilities/reorder
-      await apiFetch('/admin/utilities/reorder', {
+      await apiFetch(ROUTES.reorder, {
         token,
         method: 'POST',
         body: { orderedIds: next.map((x) => x.id) },
@@ -772,8 +774,7 @@ export default function AdminUtilitiesPage() {
       const nm = tagName.trim();
       if (!nm) throw new Error('Nome da tag obrigatório');
 
-      // ✅ FIX: /admin/utility-tags
-      await apiFetch('/admin/utility-tags', {
+      await apiFetch(ROUTES.tags, {
         token,
         method: 'POST',
         body: { name: nm, color: tagColor },
@@ -796,9 +797,7 @@ export default function AdminUtilitiesPage() {
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
-
-      // ✅ FIX: /admin/utility-tags/:id
-      await apiFetch(`/admin/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
+      await apiFetch(`${ROUTES.tags}/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
       await loadTags();
       setSelectedTagIds((p) => p.filter((x) => x !== tagId));
     } catch (e: any) {
@@ -817,11 +816,10 @@ export default function AdminUtilitiesPage() {
       const nm = folderName.trim();
       if (!nm) throw new Error('Nome da pasta obrigatório');
 
-      // ✅ FIX: /admin/utility-folders
-      await apiFetch('/admin/utility-folders', {
+      await apiFetch(ROUTES.folders, {
         token,
         method: 'POST',
-        body: { name: nm, parentId: folderParentId },
+        body: { name: nm, parentId: folderParentId ?? activeFolderId ?? null },
       });
 
       setFolderName('');
@@ -833,6 +831,23 @@ export default function AdminUtilitiesPage() {
     } finally {
       setFolderSaving(false);
     }
+  }
+
+  /** ===== UI: menus exclusivos (Tags x Pastas) ===== */
+  function toggleFoldersMenu() {
+    setFoldersOpen((v) => {
+      const next = !v;
+      if (next) setTagsOpen(false);
+      return next;
+    });
+  }
+
+  function toggleTagsMenu() {
+    setTagsOpen((v) => {
+      const next = !v;
+      if (next) setFoldersOpen(false);
+      return next;
+    });
   }
 
   /** ===== Layout ===== */
@@ -862,13 +877,13 @@ export default function AdminUtilitiesPage() {
             </div>
           </div>
 
-          {/* menus at top */}
+          {/* TOP actions */}
           <div className="flex items-center gap-2 flex-wrap justify-end">
             {/* Folder menu */}
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setFoldersOpen((v) => !v)}
+                onClick={toggleFoldersMenu}
                 className={cx(
                   'h-10 px-4 rounded-xl border border-white/10',
                   'bg-white/[0.03] hover:bg-white/[0.06] transition',
@@ -883,7 +898,7 @@ export default function AdminUtilitiesPage() {
                 <div className="absolute right-0 mt-2 w-[320px] rounded-2xl border border-white/10 bg-[#0B1022]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.70)] p-3 z-50">
                   {folderErr ? <div className="mb-2 text-xs text-red-200">{folderErr}</div> : null}
 
-                  <div className="text-white/70 text-xs mb-2">Criar pasta (como Drive)</div>
+                  <div className="text-white/70 text-xs mb-2">Criar pasta</div>
                   <div className="flex items-center gap-2">
                     <input
                       value={folderName}
@@ -905,11 +920,13 @@ export default function AdminUtilitiesPage() {
                     </button>
                   </div>
 
-                  <div className="text-white/45 text-[11px] mt-2">Parent: {activeFolderId ? 'Pasta atual' : 'Meu Drive'}</div>
+                  <div className="text-white/45 text-[11px] mt-2">
+                    Parent: {activeFolderId ? 'Pasta atual' : 'Meu Drive'}
+                  </div>
 
                   <div className="mt-3 h-px bg-white/10" />
 
-                  <div className="mt-3 text-white/70 text-xs mb-2">Navegação rápida</div>
+                  <div className="mt-3 text-white/70 text-xs mb-2">Navegação</div>
                   <div className="max-h-[280px] overflow-auto pr-1">
                     <FolderTree
                       roots={folders}
@@ -938,7 +955,7 @@ export default function AdminUtilitiesPage() {
             <div className="relative">
               <button
                 type="button"
-                onClick={() => setTagsOpen((v) => !v)}
+                onClick={toggleTagsMenu}
                 className={cx(
                   'h-10 px-4 rounded-xl border border-white/10',
                   'bg-white/[0.03] hover:bg-white/[0.06] transition',
@@ -958,7 +975,6 @@ export default function AdminUtilitiesPage() {
                 <div className="absolute right-0 mt-2 w-[360px] rounded-2xl border border-white/10 bg-[#0B1022]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.70)] p-3 z-50">
                   {tagErr ? <div className="mb-2 text-xs text-red-200">{tagErr}</div> : null}
 
-                  {/* create tag with color */}
                   <div className="text-white/70 text-xs mb-2">Criar tag (com cor)</div>
                   <div className="flex items-center gap-2">
                     <input
@@ -1018,7 +1034,6 @@ export default function AdminUtilitiesPage() {
                             </span>
                           </button>
 
-                          {/* hide/show sidebar (local pref) */}
                           <button
                             type="button"
                             onClick={() => {
@@ -1039,7 +1054,6 @@ export default function AdminUtilitiesPage() {
                             {hidden ? 'Oculta' : 'Sidebar'}
                           </button>
 
-                          {/* delete */}
                           <button
                             type="button"
                             onClick={() => deleteTag(t.id)}
@@ -1057,9 +1071,7 @@ export default function AdminUtilitiesPage() {
                   <div className="mt-3 flex justify-between items-center">
                     <button
                       type="button"
-                      onClick={() => {
-                        setSelectedTagIds([]);
-                      }}
+                      onClick={() => setSelectedTagIds([])}
                       className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
                     >
                       Limpar filtros
@@ -1118,7 +1130,7 @@ export default function AdminUtilitiesPage() {
         </div>
       </div>
 
-      {/* MAIN: Sidebar + list like Drive */}
+      {/* MAIN */}
       <div className="mt-5 grid grid-cols-12 gap-4">
         {/* Sidebar */}
         <div className="col-span-12 lg:col-span-3">
@@ -1153,10 +1165,7 @@ export default function AdminUtilitiesPage() {
                       title="Filtrar por tag"
                     >
                       <span className="inline-flex items-center gap-2">
-                        <span
-                          className="h-2.5 w-2.5 rounded-full"
-                          style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
-                        />
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
                         {t.name}
                       </span>
                     </button>
@@ -1171,9 +1180,7 @@ export default function AdminUtilitiesPage() {
 
         {/* List */}
         <div className="col-span-12 lg:col-span-9">
-          {err ? (
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
-          ) : null}
+          {err ? <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div> : null}
 
           <div className="mt-0">
             {loading ? (
@@ -1219,14 +1226,14 @@ export default function AdminUtilitiesPage() {
         </div>
       </div>
 
-      {/* MODAL create/edit — compact width */}
+      {/* MODAL — menor + scroll */}
       {modalOpen ? (
         <div className="fixed inset-0 z-[9999]">
           <div className="absolute inset-0 bg-black/60" onMouseDown={closeModal} aria-hidden="true" />
           <div className="absolute inset-0 grid place-items-center p-4" onMouseDown={closeModal}>
             <div
               className={cx(
-                'w-full max-w-[560px] rounded-2xl border border-white/10 overflow-hidden',
+                'w-full max-w-[520px] rounded-2xl border border-white/10 overflow-hidden',
                 'bg-[#0B1022]/95 backdrop-blur-xl',
                 'shadow-[0_30px_120px_rgba(0,0,0,0.70)]',
               )}
@@ -1234,9 +1241,12 @@ export default function AdminUtilitiesPage() {
               role="dialog"
               aria-modal="true"
             >
-              <div className="p-5 border-b border-white/10 flex items-start justify-between gap-4">
+              {/* header */}
+              <div className="p-4 border-b border-white/10 flex items-start justify-between gap-4">
                 <div>
-                  <div className="text-white/90 font-semibold tracking-tight">{editingId ? 'Editar utilidade' : 'Nova utilidade'}</div>
+                  <div className="text-white/90 font-semibold tracking-tight">
+                    {editingId ? 'Editar utilidade' : 'Nova utilidade'}
+                  </div>
                   <div className="text-white/45 text-sm mt-1">Nome + link + imagem + descrição + pasta + tags.</div>
                 </div>
 
@@ -1250,9 +1260,12 @@ export default function AdminUtilitiesPage() {
                 </button>
               </div>
 
-              <div className="p-5">
+              {/* body (scroll) */}
+              <div className="p-4 max-h-[72vh] overflow-auto">
                 {modalErr ? (
-                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{modalErr}</div>
+                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
+                    {modalErr}
+                  </div>
                 ) : null}
 
                 <div className="grid grid-cols-12 gap-4">
@@ -1314,16 +1327,11 @@ export default function AdminUtilitiesPage() {
                             onClick={() => setTagIdsForItem((p) => (sel ? p.filter((x) => x !== t.id) : [...p, t.id]))}
                             className={cx(
                               'h-9 px-3 rounded-full border transition text-xs',
-                              sel
-                                ? 'bg-white/[0.08] border-white/20 text-white'
-                                : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
+                              sel ? 'bg-white/[0.08] border-white/20 text-white' : 'bg-white/[0.03] border-white/10 text-white/80 hover:bg-white/[0.06]',
                             )}
                           >
                             <span className="inline-flex items-center gap-2">
-                              <span
-                                className="h-2.5 w-2.5 rounded-full"
-                                style={{ background: t.color || 'rgba(255,255,255,0.5)' }}
-                              />
+                              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color || 'rgba(255,255,255,0.5)' }} />
                               {t.name}
                             </span>
                           </button>
@@ -1365,7 +1373,7 @@ export default function AdminUtilitiesPage() {
 
                     <div className="mt-3">
                       <div className="text-white/55 text-xs mb-2">Prévia</div>
-                      <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02] h-[180px] w-full grid place-items-center">
+                      <div className="rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02] h-[170px] w-full grid place-items-center">
                         {preview ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={preview} alt="Prévia" className="h-full w-full object-cover" />
@@ -1378,7 +1386,8 @@ export default function AdminUtilitiesPage() {
                 </div>
               </div>
 
-              <div className="p-5 border-t border-white/10 flex items-center justify-end gap-2">
+              {/* footer */}
+              <div className="p-4 border-t border-white/10 flex items-center justify-end gap-2">
                 <button
                   type="button"
                   onClick={closeModal}
