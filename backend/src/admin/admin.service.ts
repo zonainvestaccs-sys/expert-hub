@@ -1560,8 +1560,8 @@ export class AdminService {
     return total;
   }
 
- // =========================
-// ✅✅✅ UTILIDADES (ADMIN) — PASTAS + TAGS + FILTRO + EDIT + REORDER
+// =========================
+// ✅✅✅ UTILIDADES (ADMIN) — Drive-like folders + tags + filters + edit + reorder + move
 // =========================
 
 private normalizeUrl(input: any) {
@@ -1601,7 +1601,12 @@ private toUtilityDto(row: any) {
     imageUrl: row?.imageUrl ?? null,
     folderId: row?.folderId ?? null,
     folder: row?.folder
-      ? { id: String(row.folder.id), name: String(row.folder.name || ''), orderIndex: Number(row.folder.orderIndex ?? 0) }
+      ? {
+          id: String(row.folder.id),
+          name: String(row.folder.name || ''),
+          orderIndex: Number(row.folder.orderIndex ?? 0),
+          parentId: row.folder.parentId ?? null,
+        }
       : null,
     tags,
     orderIndex: Number(row?.orderIndex ?? 0),
@@ -1610,64 +1615,92 @@ private toUtilityDto(row: any) {
   };
 }
 
-// ---------- PASTAS ----------
+// ---------- FOLDERS (tree) ----------
 
-async listUtilityFolders() {
+async listUtilityFoldersTree() {
   const rows = await (this.prisma as any).utilityFolder.findMany({
     orderBy: [{ orderIndex: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
   });
 
-  return {
-    items: (rows || []).map((x: any) => ({
-      id: String(x.id),
-      name: String(x.name || ''),
-      orderIndex: Number(x.orderIndex ?? 0),
-      createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
-      updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
-    })),
+  const items = (rows || []).map((x: any) => ({
+    id: String(x.id),
+    name: String(x.name || ''),
+    orderIndex: Number(x.orderIndex ?? 0),
+    parentId: x.parentId ?? null,
+    createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
+    updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
+  }));
+
+  // monta árvore
+  const byId = new Map<string, any>();
+  items.forEach((it: any) => byId.set(it.id, { ...it, children: [] as any[] }));
+
+  const roots: any[] = [];
+  for (const it of items) {
+    const node = byId.get(it.id);
+    if (it.parentId && byId.has(it.parentId)) byId.get(it.parentId).children.push(node);
+    else roots.push(node);
+  }
+
+  // ordena recursivo por orderIndex
+  const sortRec = (arr: any[]) => {
+    arr.sort((a, b) => (a.orderIndex - b.orderIndex) || String(a.name).localeCompare(String(b.name)));
+    arr.forEach((x) => sortRec(x.children || []));
   };
+  sortRec(roots);
+
+  return { items: roots };
 }
 
-async createUtilityFolder(body: { name: string }) {
+async createUtilityFolder(body: { name: string; parentId?: string | null }) {
   const name = String(body?.name || '').trim();
+  const parentId = body?.parentId ? String(body.parentId).trim() : null;
+
   if (!name) throw new Error('name obrigatório');
   if (name.length > 60) throw new Error('name muito grande (máx 60)');
 
-  const max = await (this.prisma as any).utilityFolder.aggregate({ _max: { orderIndex: true } });
+  const max = await (this.prisma as any).utilityFolder.aggregate({
+    where: { parentId },
+    _max: { orderIndex: true },
+  });
   const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
 
   const created = await (this.prisma as any).utilityFolder.create({
-    data: { name, orderIndex: nextOrder },
-    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+    data: { name, parentId, orderIndex: nextOrder },
+    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
   });
 
   return {
     id: String(created.id),
     name: String(created.name || ''),
     orderIndex: Number(created.orderIndex ?? 0),
+    parentId: created.parentId ?? null,
     createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
     updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
   };
 }
 
-async updateUtilityFolder(id: string, body: { name: string }) {
+async updateUtilityFolder(id: string, body: { name: string; parentId?: string | null }) {
   const folderId = String(id || '').trim();
   if (!folderId) throw new Error('id obrigatório');
 
   const name = String(body?.name || '').trim();
+  const parentId = body?.parentId ? String(body.parentId).trim() : null;
+
   if (!name) throw new Error('name obrigatório');
 
   const updated = await (this.prisma as any).utilityFolder.update({
     where: { id: folderId },
-    data: { name },
-    select: { id: true, name: true, orderIndex: true, createdAt: true, updatedAt: true },
+    data: { name, parentId },
+    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
   });
 
   return {
     id: String(updated.id),
     name: String(updated.name || ''),
     orderIndex: Number(updated.orderIndex ?? 0),
+    parentId: updated.parentId ?? null,
     createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
     updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
   };
@@ -1677,13 +1710,46 @@ async deleteUtilityFolder(id: string) {
   const folderId = String(id || '').trim();
   if (!folderId) throw new Error('id obrigatório');
 
-  // coloca folderId = null nas utilidades (SetNull já faz, mas vamos ser explícitos)
+  // move utilidades pra raiz
   await (this.prisma as any).utilityLink.updateMany({
     where: { folderId },
     data: { folderId: null },
   });
 
+  // move filhos pra raiz (drive-like simples)
+  await (this.prisma as any).utilityFolder.updateMany({
+    where: { parentId: folderId },
+    data: { parentId: null },
+  });
+
   await (this.prisma as any).utilityFolder.delete({ where: { id: folderId } });
+  return { ok: true };
+}
+
+async reorderFolders(orderedIds: string[]) {
+  const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
+  if (!ids.length) return { ok: true };
+
+  const rows = await (this.prisma as any).utilityFolder.findMany({
+    where: { id: { in: ids } },
+    select: { id: true, parentId: true },
+  });
+  if (!rows.length) return { ok: true };
+
+  const parentKey = String(rows[0].parentId ?? '');
+  const mixed = rows.some((r: any) => String(r.parentId ?? '') !== parentKey);
+  if (mixed) throw new Error('Reordenação inválida: pastas de níveis diferentes');
+
+  await (this.prisma as any).$transaction(
+    ids.map((fid, idx) =>
+      (this.prisma as any).utilityFolder.update({
+        where: { id: fid },
+        data: { orderIndex: idx + 1 },
+        select: { id: true },
+      }),
+    ),
+  );
+
   return { ok: true };
 }
 
@@ -1755,10 +1821,8 @@ async deleteUtilityTag(id: string) {
   const tagId = String(id || '').trim();
   if (!tagId) throw new Error('id obrigatório');
 
-  // deleta relações primeiro
   await (this.prisma as any).utilityLinkTag.deleteMany({ where: { tagId } });
   await (this.prisma as any).utilityTag.delete({ where: { id: tagId } });
-
   return { ok: true };
 }
 
@@ -1767,11 +1831,12 @@ async deleteUtilityTag(id: string) {
 async listUtilities(params?: { folderId?: string; tagIds?: string[]; q?: string }) {
   const folderId = String(params?.folderId || '').trim();
   const tagIds = Array.isArray(params?.tagIds) ? params!.tagIds!.map(String).filter(Boolean) : [];
-  const q = String(params?.q || '').trim().toLowerCase();
+  const q = String(params?.q || '').trim();
 
   const where: any = {};
-
+  // folderId vazio => raiz
   if (folderId) where.folderId = folderId;
+  else where.folderId = null;
 
   if (q) {
     where.OR = [
@@ -1781,20 +1846,15 @@ async listUtilities(params?: { folderId?: string; tagIds?: string[]; q?: string 
     ];
   }
 
-  // filtro por tags: "tem todas as tags selecionadas"
+  // “tem todas as tags selecionadas”
   if (tagIds.length) {
-    where.AND = tagIds.map((tid) => ({
-      tags: { some: { tagId: tid } },
-    }));
+    where.AND = tagIds.map((tid) => ({ tags: { some: { tagId: tid } } }));
   }
 
   const rows = await (this.prisma as any).utilityLink.findMany({
     where,
     orderBy: [{ orderIndex: 'asc' }, { createdAt: 'desc' }],
-    include: {
-      folder: true,
-      tags: { include: { tag: true } },
-    },
+    include: { folder: true, tags: { include: { tag: true } } },
   });
 
   return { items: (rows || []).map((r: any) => this.toUtilityDto(r)) };
@@ -1806,9 +1866,8 @@ async createUtility(
 ) {
   const name = String(body?.name || '').trim();
   const url = this.normalizeUrl(body?.url);
-  const description = cleanNullableString(String(body?.description ?? ''));
+  const description = typeof body?.description === 'string' ? cleanNullableString(body.description) : null;
   const folderId = String(body?.folderId || '').trim() || null;
-
   const tagIds = Array.isArray(body?.tagIds) ? body!.tagIds!.map(String).filter(Boolean) : [];
 
   if (!name) throw new Error('name obrigatório');
@@ -1832,7 +1891,6 @@ async createUtility(
     imageUrl = `/uploads/admin/utilities/${filename}`;
   }
 
-  // next orderIndex = max + 1 dentro da pasta (ou global se folderId null)
   const max = await (this.prisma as any).utilityLink.aggregate({
     where: { folderId },
     _max: { orderIndex: true },
@@ -1847,16 +1905,9 @@ async createUtility(
       imageUrl,
       folderId,
       orderIndex: nextOrder,
-      tags: tagIds.length
-        ? {
-            create: tagIds.map((tagId) => ({ tagId })),
-          }
-        : undefined,
+      tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
     },
-    include: {
-      folder: true,
-      tags: { include: { tag: true } },
-    },
+    include: { folder: true, tags: { include: { tag: true } } },
   });
 
   return this.toUtilityDto(created);
@@ -1891,11 +1942,9 @@ async updateUtility(
     data.url = u;
   }
 
-  if (typeof body?.description === 'string') {
-    data.description = cleanNullableString(body.description);
-  }
+  if (typeof body?.description === 'string') data.description = cleanNullableString(body.description);
 
-  // mover de pasta: mantém orderIndex atual, mas se mudar pasta, joga pro final da pasta destino
+  // mover pasta: joga pro final do destino
   if (typeof body?.folderId === 'string') {
     const newFolderId = body.folderId.trim() || null;
     const oldFolderId = exists.folderId ?? null;
@@ -1910,7 +1959,7 @@ async updateUtility(
     }
   }
 
-  // substituir imagem (opcional)
+  // substituir imagem
   if (file) {
     const ext = this.safeExtFromMimeOrName(file);
     if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
@@ -1925,18 +1974,14 @@ async updateUtility(
 
     data.imageUrl = `/uploads/admin/utilities/${filename}`;
 
-    // tenta remover arquivo antigo
     const oldImg = String(exists.imageUrl || '').trim();
     if (oldImg && oldImg.startsWith('/uploads/')) {
       const rel = oldImg.replace(/^\/uploads\//, '');
       const full = path.join(process.cwd(), 'uploads', rel);
-      try {
-        if (fs.existsSync(full)) fs.unlinkSync(full);
-      } catch {}
+      try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch {}
     }
   }
 
-  // tags (se veio)
   const shouldUpdateTags = Array.isArray(body?.tagIds);
   const nextTagIds = shouldUpdateTags ? (body!.tagIds || []).map(String).filter(Boolean) : null;
 
@@ -1951,14 +1996,10 @@ async updateUtility(
       }
     }
 
-    // update principal
     return await tx.utilityLink.update({
       where: { id: utilityId },
       data,
-      include: {
-        folder: true,
-        tags: { include: { tag: true } },
-      },
+      include: { folder: true, tags: { include: { tag: true } } },
     });
   });
 
@@ -1973,50 +2014,39 @@ async deleteUtility(id: string) {
     where: { id: utilityId },
     select: { id: true, imageUrl: true },
   });
-
   if (!exists) throw new Error('Utilidade não encontrada');
 
-  // apaga imagem física
   const img = String(exists.imageUrl || '').trim();
   if (img && img.startsWith('/uploads/')) {
     const rel = img.replace(/^\/uploads\//, '');
     const full = path.join(process.cwd(), 'uploads', rel);
-    try {
-      if (fs.existsSync(full)) fs.unlinkSync(full);
-    } catch {}
+    try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch {}
   }
 
-  // apaga tags
   await (this.prisma as any).utilityLinkTag.deleteMany({ where: { utilityId } });
   await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
 
   return { ok: true };
 }
 
-// ---------- REORDER (drag & drop) ----------
-
 async reorderUtilities(orderedIds: string[]) {
   const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
   if (!ids.length) return { ok: true };
 
-  // buscamos para descobrir pasta e garantir consistência
   const rows = await (this.prisma as any).utilityLink.findMany({
     where: { id: { in: ids } },
     select: { id: true, folderId: true },
   });
-
   if (!rows.length) return { ok: true };
 
-  // garante que todos são da mesma pasta (ou todos null) para evitar bagunça
   const folderKey = String(rows[0].folderId ?? '');
   const mixed = rows.some((r: any) => String(r.folderId ?? '') !== folderKey);
   if (mixed) throw new Error('Reordenação inválida: itens de pastas diferentes');
 
-  // atualiza ordem
   await (this.prisma as any).$transaction(
-    ids.map((id, idx) =>
+    ids.map((uid, idx) =>
       (this.prisma as any).utilityLink.update({
-        where: { id },
+        where: { id: uid },
         data: { orderIndex: idx + 1 },
         select: { id: true },
       }),
@@ -2024,5 +2054,26 @@ async reorderUtilities(orderedIds: string[]) {
   );
 
   return { ok: true };
+}
+
+async moveUtility(id: string, folderId: string | null) {
+  const utilityId = String(id || '').trim();
+  if (!utilityId) throw new Error('id obrigatório');
+
+  const newFolderId = folderId ? String(folderId).trim() : null;
+
+  const max = await (this.prisma as any).utilityLink.aggregate({
+    where: { folderId: newFolderId },
+    _max: { orderIndex: true },
+  });
+  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+
+  const updated = await (this.prisma as any).utilityLink.update({
+    where: { id: utilityId },
+    data: { folderId: newFolderId, orderIndex: nextOrder },
+    include: { folder: true, tags: { include: { tag: true } } },
+  });
+
+  return this.toUtilityDto(updated);
 }
 }
