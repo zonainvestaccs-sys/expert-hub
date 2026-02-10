@@ -23,6 +23,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type UtilityTag = { id: string; name: string; color?: string | null };
+
 type UtilityFolderNode = {
   id: string;
   name: string;
@@ -41,7 +42,7 @@ type UtilityItem = {
   orderIndex?: number;
   tags?: UtilityTag[];
   createdAt?: string | null;
-  updatedAt?: string | null;
+  updatedAt?: string | nullz;
 };
 
 function cx(...c: Array<string | false | null | undefined>) {
@@ -72,112 +73,145 @@ function normalizeUrl(input: string) {
 }
 
 /** ===== ICONS ===== */
-function Icon(props: { name:
-  | 'plus' | 'trash' | 'edit' | 'refresh' | 'close' | 'upload'
-  | 'folder' | 'tag' | 'chevR' | 'chevD' | 'dots' | 'grid' | 'spark' | 'x'
+function Icon(props: {
+  name:
+    | 'plus'
+    | 'trash'
+    | 'edit'
+    | 'refresh'
+    | 'close'
+    | 'upload'
+    | 'folder'
+    | 'tag'
+    | 'chevR'
+    | 'chevD'
+    | 'dots'
+    | 'grid'
+    | 'spark'
+    | 'x';
 }) {
   const { name } = props;
   const common = { width: 18, height: 18, viewBox: '0 0 24 24', fill: 'none' as const };
 
-  if (name === 'plus') return (
-    <svg {...common}>
-      <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'plus')
+    return (
+      <svg {...common}>
+        <path d="M12 5v14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M5 12h14" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'trash') return (
-    <svg {...common}>
-      <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === 'trash')
+    return (
+      <svg {...common}>
+        <path d="M4 7h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M10 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M14 11v7" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M7 7l1-3h8l1 3v14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2V7Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'edit') return (
-    <svg {...common}>
-      <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path
-        d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === 'edit')
+    return (
+      <svg {...common}>
+        <path d="M12 20h9" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path
+          d="M16.5 3.5a2.1 2.1 0 0 1 3 3L8 18l-4 1 1-4 11.5-11.5Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'refresh') return (
-    <svg {...common}>
-      <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'refresh')
+    return (
+      <svg {...common}>
+        <path d="M21 12a9 9 0 1 1-2.64-6.36" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M21 3v6h-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
-  if (name === 'close' || name === 'x') return (
-    <svg {...common}>
-      <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'close' || name === 'x')
+    return (
+      <svg {...common}>
+        <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'upload') return (
-    <svg {...common}>
-      <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'upload')
+    return (
+      <svg {...common}>
+        <path d="M12 3v10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M8 7l4-4 4 4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+        <path d="M4 14v4a3 3 0 0 0 3 3h10a3 3 0 0 0 3-3v-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'folder') return (
-    <svg {...common}>
-      <path
-        d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z"
-        stroke="currentColor"
-        strokeWidth="1.8"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+  if (name === 'folder')
+    return (
+      <svg {...common}>
+        <path
+          d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V7Z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  if (name === 'tag') return (
-    <svg {...common}>
-      <path d="M20 10V4h-6L4 14l6 6 10-10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M14.5 7.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
-    </svg>
-  );
+  if (name === 'tag')
+    return (
+      <svg {...common}>
+        <path d="M20 10V4h-6L4 14l6 6 10-10Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M14.5 7.5h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+      </svg>
+    );
 
-  if (name === 'chevR') return (
-    <svg {...common}>
-      <path d="M10 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'chevR')
+    return (
+      <svg {...common}>
+        <path d="M10 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
-  if (name === 'chevD') return (
-    <svg {...common}>
-      <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
+  if (name === 'chevD')
+    return (
+      <svg {...common}>
+        <path d="M6 10l6 6 6-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
 
-  if (name === 'grid') return (
-    <svg {...common}>
-      <path d="M4 4h7v7H4V4Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M13 4h7v7h-7V4Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M4 13h7v7H4v-7Z" stroke="currentColor" strokeWidth="1.8" />
-      <path d="M13 13h7v7h-7v-7Z" stroke="currentColor" strokeWidth="1.8" />
-    </svg>
-  );
+  if (name === 'grid')
+    return (
+      <svg {...common}>
+        <path d="M4 4h7v7H4V4Z" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M13 4h7v7h-7V4Z" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M4 13h7v7H4v-7Z" stroke="currentColor" strokeWidth="1.8" />
+        <path d="M13 13h7v7h-7v-7Z" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
 
-  if (name === 'spark') return (
-    <svg {...common}>
-      <path d="M12 2l1.2 4.3L17.5 8l-4.3 1.2L12 13.5l-1.2-4.3L6.5 8l4.3-1.7L12 2Z" stroke="currentColor" strokeWidth="1.4" />
-      <path d="M19 12l.7 2.4L22 15l-2.3.7L19 18l-.7-2.3L16 15l2.3-.6L19 12Z" stroke="currentColor" strokeWidth="1.4" />
-    </svg>
-  );
+  if (name === 'spark')
+    return (
+      <svg {...common}>
+        <path
+          d="M12 2l1.2 4.3L17.5 8l-4.3 1.2L12 13.5l-1.2-4.3L6.5 8l4.3-1.7L12 2Z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+        <path
+          d="M19 12l.7 2.4L22 15l-2.3.7L19 18l-.7-2.3L16 15l2.3-.6L19 12Z"
+          stroke="currentColor"
+          strokeWidth="1.4"
+        />
+      </svg>
+    );
 
   return (
     <svg {...common}>
@@ -217,7 +251,13 @@ function Pill({ text, color }: { text: string; color?: string | null }) {
   );
 }
 
-function Collapsible(props: { title: string; open: boolean; onToggle: () => void; children: React.ReactNode; right?: React.ReactNode }) {
+function Collapsible(props: {
+  title: string;
+  open: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  right?: React.ReactNode;
+}) {
   const { title, open, onToggle, children, right } = props;
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
@@ -276,14 +316,17 @@ function buildBreadcrumb(roots: UtilityFolderNode[], activeFolderId: string | nu
 
 function getChildrenFolders(roots: UtilityFolderNode[], activeFolderId: string | null) {
   if (!activeFolderId) {
-    // root = folders sem parent (vindo como roots)
-    return roots.slice().sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.name.localeCompare(b.name));
+    return roots
+      .slice()
+      .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.name.localeCompare(b.name));
   }
 
   const { byId } = buildMaps(roots);
   const node = byId.get(activeFolderId);
   if (!node) return [];
-  return (node.children || []).slice().sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.name.localeCompare(b.name));
+  return (node.children || [])
+    .slice()
+    .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0) || a.name.localeCompare(b.name));
 }
 
 function flattenFoldersForSelect(roots: UtilityFolderNode[]) {
@@ -297,11 +340,7 @@ function flattenFoldersForSelect(roots: UtilityFolderNode[]) {
 }
 
 /** ===== Folder Card ===== */
-function FolderCard(props: {
-  name: string;
-  onOpen: () => void;
-  onDelete?: () => void;
-}) {
+function FolderCard(props: { name: string; onOpen: () => void; onDelete?: () => void }) {
   const { name, onOpen, onDelete } = props;
   return (
     <div
@@ -328,7 +367,10 @@ function FolderCard(props: {
         {onDelete ? (
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
             className="opacity-0 group-hover:opacity-100 transition h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 grid place-items-center text-red-200"
             title="Excluir pasta"
             aria-label="Excluir pasta"
@@ -338,20 +380,13 @@ function FolderCard(props: {
         ) : null}
       </div>
       <div className="h-px bg-white/10" />
-      <div className="p-4 text-white/50 text-xs">
-        Clique para abrir
-      </div>
+      <div className="p-4 text-white/50 text-xs">Clique para abrir</div>
     </div>
   );
 }
 
 /** ===== Utility Card (Grid) ===== */
-function SortableUtilityCard(props: {
-  item: UtilityItem;
-  onOpen: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-}) {
+function SortableUtilityCard(props: { item: UtilityItem; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
   const { item, onOpen, onEdit, onDelete } = props;
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
@@ -375,20 +410,15 @@ function SortableUtilityCard(props: {
           'transition-all duration-200',
         )}
       >
-        {/* thumbnail (bigger / hero) */}
         <div className="relative">
-          <div
-            className={cx(
-              'h-[160px] w-full overflow-hidden',
-              'bg-white/[0.03]',
-              'cursor-pointer',
-            )}
-            onClick={onOpen}
-            title="Abrir link"
-          >
+          <div className={cx('h-[160px] w-full overflow-hidden', 'bg-white/[0.03]', 'cursor-pointer')} onClick={onOpen} title="Abrir link">
             {img ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt={item.name} className="h-full w-full object-cover scale-[1.02] group-hover:scale-[1.05] transition-transform duration-300" />
+              <img
+                src={img}
+                alt={item.name}
+                className="h-full w-full object-cover scale-[1.02] group-hover:scale-[1.05] transition-transform duration-300"
+              />
             ) : (
               <div className="h-full w-full grid place-items-center text-white/55">
                 <Icon name="spark" />
@@ -396,7 +426,6 @@ function SortableUtilityCard(props: {
             )}
           </div>
 
-          {/* drag handle */}
           <button
             type="button"
             {...attributes}
@@ -415,11 +444,13 @@ function SortableUtilityCard(props: {
             <Icon name="dots" />
           </button>
 
-          {/* actions */}
           <div className="absolute top-3 right-3 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition">
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit();
+              }}
               className="h-10 w-10 rounded-xl border border-white/10 bg-black/35 backdrop-blur hover:bg-black/45 transition grid place-items-center text-white/90"
               title="Editar"
               aria-label="Editar"
@@ -429,7 +460,10 @@ function SortableUtilityCard(props: {
 
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
               className="h-10 w-10 rounded-xl border border-red-500/25 bg-red-500/15 backdrop-blur hover:bg-red-500/20 transition grid place-items-center text-red-200"
               title="Excluir"
               aria-label="Excluir"
@@ -439,26 +473,16 @@ function SortableUtilityCard(props: {
           </div>
         </div>
 
-        {/* content */}
         <div className="p-4">
-          <div className="text-white font-semibold text-[16px] leading-snug line-clamp-2">
-            {item.name}
-          </div>
+          <div className="text-white font-semibold text-[16px] leading-snug line-clamp-2">{item.name}</div>
 
-          {/* description highlighted and ABOVE link */}
           {item.description ? (
-            <div className="mt-2 text-white/80 text-[13px] leading-relaxed line-clamp-2">
-              {item.description}
-            </div>
+            <div className="mt-2 text-white/80 text-[13px] leading-relaxed line-clamp-2">{item.description}</div>
           ) : (
-            <div className="mt-2 text-white/35 text-[13px] italic">
-              Sem descrição
-            </div>
+            <div className="mt-2 text-white/35 text-[13px] italic">Sem descrição</div>
           )}
 
-          <div className="mt-3 text-white/50 text-xs truncate">
-            {item.url}
-          </div>
+          <div className="mt-3 text-white/50 text-xs truncate">{item.url}</div>
 
           {item.tags?.length ? (
             <div className="mt-3 flex flex-wrap gap-2">
@@ -481,34 +505,27 @@ export default function AdminUtilitiesPage() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
 
-  // Drive
   const [folders, setFolders] = useState<UtilityFolderNode[]>([]);
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
 
-  // Tags
   const [tags, setTags] = useState<UtilityTag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
   const [q, setQ] = useState('');
 
-  // Items (utilities only, folders are derived from tree)
   const [items, setItems] = useState<UtilityItem[]>([]);
 
-  // Top menus
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [tagsOpen, setTagsOpen] = useState(false);
 
-  // Folder create
   const [folderName, setFolderName] = useState('');
   const [folderSaving, setFolderSaving] = useState(false);
   const [folderErr, setFolderErr] = useState('');
 
-  // Tag create
   const [tagName, setTagName] = useState('');
   const [tagColor, setTagColor] = useState('#7C3AED');
   const [tagSaving, setTagSaving] = useState(false);
   const [tagErr, setTagErr] = useState('');
 
-  // Modal create/edit
   const [modalOpen, setModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -527,21 +544,19 @@ export default function AdminUtilitiesPage() {
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // DnD reorder (grid)
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
 
   const breadcrumb = useMemo(() => buildBreadcrumb(folders, activeFolderId), [folders, activeFolderId]);
   const childFolders = useMemo(() => getChildrenFolders(folders, activeFolderId), [folders, activeFolderId]);
-
   const folderSelectOptions = useMemo(() => flattenFoldersForSelect(folders), [folders]);
 
-  /** ===== loaders ===== */
+  /** ===== loaders (IMPORTANT: /admin prefix) ===== */
   const loadFolders = useCallback(async () => {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
 
-    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/utility-folders', { token });
+    const data = await apiFetch<{ items: UtilityFolderNode[] }>('/admin/utility-folders', { token });
     setFolders(Array.isArray(data?.items) ? data.items : []);
   }, []);
 
@@ -549,7 +564,7 @@ export default function AdminUtilitiesPage() {
     const token = tokenRef.current;
     if (!token) throw new Error('Sem token');
 
-    const data = await apiFetch<{ items: UtilityTag[] }>('/utility-tags', { token });
+    const data = await apiFetch<{ items: UtilityTag[] }>('/admin/utility-tags', { token });
     setTags(Array.isArray(data?.items) ? data.items : []);
   }, []);
 
@@ -565,7 +580,7 @@ export default function AdminUtilitiesPage() {
       if (q.trim()) params.set('q', q.trim());
       if (selectedTagIds.length) params.set('tagIds', selectedTagIds.join(','));
 
-      const data = await apiFetch<{ items: UtilityItem[] }>(`/utilities?${params.toString()}`, { token });
+      const data = await apiFetch<{ items: UtilityItem[] }>(`/admin/utilities?${params.toString()}`, { token });
       setItems(Array.isArray(data?.items) ? data.items : []);
     } catch (e: any) {
       const msg = typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao carregar';
@@ -684,9 +699,13 @@ export default function AdminUtilitiesPage() {
       if (file) fd.append('file', file);
 
       if (!editingId) {
-        await apiUpload<UtilityItem>('/utilities', { token, formData: fd, method: 'POST' });
+        await apiUpload<UtilityItem>('/admin/utilities', { token, formData: fd, method: 'POST' });
       } else {
-        await apiUpload<UtilityItem>(`/utilities/${encodeURIComponent(editingId)}`, { token, formData: fd, method: 'PATCH' });
+        await apiUpload<UtilityItem>(`/admin/utilities/${encodeURIComponent(editingId)}`, {
+          token,
+          formData: fd,
+          method: 'PATCH',
+        });
       }
 
       closeModal();
@@ -707,7 +726,7 @@ export default function AdminUtilitiesPage() {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      await apiFetch(`/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
+      await apiFetch(`/admin/utilities/${encodeURIComponent(id)}`, { token, method: 'DELETE' });
       setItems((prev) => prev.filter((x) => x.id !== id));
     } catch (e: any) {
       window.alert(typeof e?.message === 'string' ? e.message : e?.error || 'Falha ao excluir');
@@ -715,7 +734,7 @@ export default function AdminUtilitiesPage() {
   }
 
   function toggleSelectedTag(id: string) {
-    setSelectedTagIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+    setSelectedTagIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   }
 
   /** ===== Top menu: folders ===== */
@@ -729,12 +748,12 @@ export default function AdminUtilitiesPage() {
       const nm = folderName.trim();
       if (!nm) throw new Error('Nome da pasta obrigatório');
 
-      await apiFetch('/utility-folders', {
+      await apiFetch('/admin/utility-folders', {
         token,
         method: 'POST',
         body: {
           name: nm,
-          parentId: activeFolderId, // drive-like: cria dentro da pasta atual
+          parentId: activeFolderId,
         },
       });
 
@@ -756,9 +775,8 @@ export default function AdminUtilitiesPage() {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
 
-      await apiFetch(`/utility-folders/${encodeURIComponent(folderId)}`, { token, method: 'DELETE' });
+      await apiFetch(`/admin/utility-folders/${encodeURIComponent(folderId)}`, { token, method: 'DELETE' });
 
-      // se deletou a pasta atual, volta pro pai (aqui volta pro root)
       if (activeFolderId === folderId) setActiveFolderId(null);
 
       await loadFolders();
@@ -779,7 +797,7 @@ export default function AdminUtilitiesPage() {
       const nm = tagName.trim();
       if (!nm) throw new Error('Nome da tag obrigatório');
 
-      await apiFetch('/utility-tags', {
+      await apiFetch('/admin/utility-tags', {
         token,
         method: 'POST',
         body: { name: nm, color: tagColor },
@@ -802,7 +820,7 @@ export default function AdminUtilitiesPage() {
     try {
       const token = tokenRef.current;
       if (!token) throw new Error('Sem token');
-      await apiFetch(`/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
+      await apiFetch(`/admin/utility-tags/${encodeURIComponent(tagId)}`, { token, method: 'DELETE' });
       await loadTags();
       setSelectedTagIds((p) => p.filter((x) => x !== tagId));
     } catch (e: any) {
@@ -828,7 +846,7 @@ export default function AdminUtilitiesPage() {
     try {
       const token = tokenRef.current;
       if (!token) return;
-      await apiFetch('/utilities/reorder', {
+      await apiFetch('/admin/utilities/reorder', {
         token,
         method: 'POST',
         body: { orderedIds: next.map((x) => x.id) },
@@ -838,7 +856,6 @@ export default function AdminUtilitiesPage() {
     }
   }
 
-  /** ===== Combined view: show folders first, then utilities ===== */
   const hasAny = childFolders.length > 0 || items.length > 0;
 
   return (
@@ -894,7 +911,10 @@ export default function AdminUtilitiesPage() {
                 <div className="absolute right-0 mt-2 w-[360px] rounded-2xl border border-white/10 bg-[#0B1022]/95 backdrop-blur-xl shadow-[0_30px_120px_rgba(0,0,0,0.70)] p-3 z-50">
                   {folderErr ? <div className="mb-2 text-xs text-red-200">{folderErr}</div> : null}
 
-                  <div className="text-white/75 text-xs mb-2">Criar pasta dentro de: <span className="text-white/90">{breadcrumb[breadcrumb.length - 1]?.name}</span></div>
+                  <div className="text-white/75 text-xs mb-2">
+                    Criar pasta dentro de:{' '}
+                    <span className="text-white/90">{breadcrumb[breadcrumb.length - 1]?.name}</span>
+                  </div>
                   <div className="flex items-center gap-2">
                     <input
                       value={folderName}
@@ -920,31 +940,39 @@ export default function AdminUtilitiesPage() {
 
                   <div className="mt-3 text-white/70 text-xs mb-2">Pastas aqui</div>
                   <div className="max-h-[260px] overflow-auto pr-1 space-y-2">
-                    {childFolders.length ? childFolders.map((f) => (
-                      <div key={f.id} className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2">
-                        <button
-                          type="button"
-                          onClick={() => { openFolder(f.id); setFoldersOpen(false); }}
-                          className="min-w-0 flex-1 text-left text-white/85 text-sm truncate hover:text-white"
-                          title="Abrir"
+                    {childFolders.length ? (
+                      childFolders.map((f) => (
+                        <div
+                          key={f.id}
+                          className="flex items-center justify-between gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2"
                         >
-                          <span className="inline-flex items-center gap-2">
-                            <Icon name="folder" />
-                            {f.name}
-                          </span>
-                        </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              openFolder(f.id);
+                              setFoldersOpen(false);
+                            }}
+                            className="min-w-0 flex-1 text-left text-white/85 text-sm truncate hover:text-white"
+                            title="Abrir"
+                          >
+                            <span className="inline-flex items-center gap-2">
+                              <Icon name="folder" />
+                              {f.name}
+                            </span>
+                          </button>
 
-                        <button
-                          type="button"
-                          onClick={() => deleteFolder(f.id)}
-                          className="h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
-                          title="Excluir pasta"
-                          aria-label="Excluir pasta"
-                        >
-                          <Icon name="trash" />
-                        </button>
-                      </div>
-                    )) : (
+                          <button
+                            type="button"
+                            onClick={() => deleteFolder(f.id)}
+                            className="h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
+                            title="Excluir pasta"
+                            aria-label="Excluir pasta"
+                          >
+                            <Icon name="trash" />
+                          </button>
+                        </div>
+                      ))
+                    ) : (
                       <div className="text-white/45 text-xs">Nenhuma pasta aqui.</div>
                     )}
                   </div>
@@ -1060,7 +1088,10 @@ export default function AdminUtilitiesPage() {
                   <div className="mt-3 flex justify-between items-center">
                     <button
                       type="button"
-                      onClick={() => { setSelectedTagIds([]); loadItems(); }}
+                      onClick={() => {
+                        setSelectedTagIds([]);
+                        loadItems();
+                      }}
                       className="h-9 px-3 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.05] transition text-white/75 text-sm"
                     >
                       Limpar filtros
@@ -1084,7 +1115,9 @@ export default function AdminUtilitiesPage() {
               onChange={(e) => setQ(e.target.value)}
               className="h-10 w-[240px] max-w-full rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
               placeholder="Buscar..."
-              onKeyDown={(e) => { if (e.key === 'Enter') loadItems(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') loadItems();
+              }}
             />
 
             <button
@@ -1140,12 +1173,7 @@ export default function AdminUtilitiesPage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   {childFolders.map((f) => (
-                    <FolderCard
-                      key={f.id}
-                      name={f.name}
-                      onOpen={() => openFolder(f.id)}
-                      onDelete={() => deleteFolder(f.id)}
-                    />
+                    <FolderCard key={f.id} name={f.name} onOpen={() => openFolder(f.id)} onDelete={() => deleteFolder(f.id)} />
                   ))}
                 </div>
               </div>
@@ -1158,9 +1186,7 @@ export default function AdminUtilitiesPage() {
               </div>
 
               {items.length === 0 ? (
-                <PremiumPanel className="px-6 py-10 text-center text-white/55">
-                  Nenhuma utilidade nesta pasta.
-                </PremiumPanel>
+                <PremiumPanel className="px-6 py-10 text-center text-white/55">Nenhuma utilidade nesta pasta.</PremiumPanel>
               ) : (
                 <DndContext
                   sensors={sensors}
@@ -1233,9 +1259,7 @@ export default function AdminUtilitiesPage() {
               {/* scroll area */}
               <div className="p-5 max-h-[70vh] overflow-auto">
                 {modalErr ? (
-                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">
-                    {modalErr}
-                  </div>
+                  <div className="mb-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{modalErr}</div>
                 ) : null}
 
                 <div className="grid grid-cols-12 gap-4">
@@ -1284,7 +1308,9 @@ export default function AdminUtilitiesPage() {
                       >
                         <option value="">(Meu Drive)</option>
                         {folderSelectOptions.map((f) => (
-                          <option key={f.id} value={f.id}>{f.label}</option>
+                          <option key={f.id} value={f.id}>
+                            {f.label}
+                          </option>
                         ))}
                       </select>
                       <div className="mt-2 text-white/45 text-xs">
@@ -1306,10 +1332,12 @@ export default function AdminUtilitiesPage() {
                               <button
                                 key={t.id}
                                 type="button"
-                                onClick={() => setTagIdsForItem((p) => sel ? p.filter((x) => x !== t.id) : [...p, t.id])}
+                                onClick={() => setTagIdsForItem((p) => (sel ? p.filter((x) => x !== t.id) : [...p, t.id]))}
                                 className={cx(
                                   'h-9 px-3 rounded-full border transition text-xs',
-                                  sel ? 'bg-white/[0.10] border-white/25 text-white' : 'bg-white/[0.03] border-white/10 text-white/85 hover:bg-white/[0.06]',
+                                  sel
+                                    ? 'bg-white/[0.10] border-white/25 text-white'
+                                    : 'bg-white/[0.03] border-white/10 text-white/85 hover:bg-white/[0.06]',
                                 )}
                               >
                                 <span className="inline-flex items-center gap-2">
@@ -1325,12 +1353,7 @@ export default function AdminUtilitiesPage() {
                       )}
                     </Collapsible>
 
-                    <Collapsible
-                      title="Imagem (thumbnail grande)"
-                      open={true}
-                      onToggle={() => {}}
-                      right={null}
-                    >
+                    <Collapsible title="Imagem (thumbnail grande)" open={true} onToggle={() => {}} right={null}>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
