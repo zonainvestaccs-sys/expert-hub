@@ -18,6 +18,7 @@ import {
   SortableContext,
   useSortable,
   rectSortingStrategy,
+  verticalListSortingStrategy,
   arrayMove,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -87,6 +88,7 @@ function Icon(props: {
     | 'chevD'
     | 'dots'
     | 'grid'
+    | 'list'
     | 'spark'
     | 'x';
 }) {
@@ -194,6 +196,16 @@ function Icon(props: {
         <path d="M13 4h7v7h-7V4Z" stroke="currentColor" strokeWidth="1.8" />
         <path d="M4 13h7v7H4v-7Z" stroke="currentColor" strokeWidth="1.8" />
         <path d="M13 13h7v7h-7v-7Z" stroke="currentColor" strokeWidth="1.8" />
+      </svg>
+    );
+
+  if (name === 'list')
+    return (
+      <svg {...common}>
+        <path d="M6 7h15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M6 12h15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M6 17h15" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+        <path d="M3.5 7h.01M3.5 12h.01M3.5 17h.01" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
       </svg>
     );
 
@@ -497,6 +509,120 @@ function SortableUtilityCard(props: { item: UtilityItem; onOpen: () => void; onE
   );
 }
 
+/** ===== Utility Row (List) ===== */
+function SortableUtilityRow(props: { item: UtilityItem; onOpen: () => void; onEdit: () => void; onDelete: () => void }) {
+  const { item, onOpen, onEdit, onDelete } = props;
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: item.id });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.78 : 1,
+  };
+
+  const img = resolveImageUrl(item.imageUrl);
+
+  return (
+    <div ref={setNodeRef} style={style} className={cx(isDragging && 'z-50')}>
+      <div
+        className={cx(
+          'group rounded-2xl border border-white/10',
+          'bg-gradient-to-b from-white/[0.05] to-white/[0.02]',
+          'hover:border-white/20 hover:bg-white/[0.035] transition',
+          'px-3 py-3 flex items-center gap-3',
+        )}
+      >
+        {/* drag */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          onClick={(e) => e.stopPropagation()}
+          className={cx(
+            'shrink-0 h-10 w-10 rounded-xl',
+            'border border-white/10 bg-black/30',
+            'text-white/70 hover:text-white hover:bg-black/40 transition',
+            'grid place-items-center cursor-grab active:cursor-grabbing',
+          )}
+          title="Arrastar para reordenar"
+          aria-label="Arrastar"
+        >
+          <Icon name="dots" />
+        </button>
+
+        {/* thumb */}
+        <div
+          className="shrink-0 h-14 w-14 rounded-2xl border border-white/10 overflow-hidden bg-white/[0.02] cursor-pointer"
+          onClick={onOpen}
+          title="Abrir"
+        >
+          {img ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={img} alt={item.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full grid place-items-center text-white/55">
+              <Icon name="spark" />
+            </div>
+          )}
+        </div>
+
+        {/* content */}
+        <div className="min-w-0 flex-1 cursor-pointer" onClick={onOpen} title="Abrir">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="text-white/95 font-semibold truncate">{item.name}</div>
+
+              {item.description ? (
+                <div className="mt-1 text-white/80 text-[13px] leading-relaxed line-clamp-2">{item.description}</div>
+              ) : null}
+
+              <div className="mt-1 text-white/50 text-xs truncate">{item.url}</div>
+            </div>
+
+            {/* actions */}
+            <div className="shrink-0 flex items-center gap-2 opacity-100">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onEdit();
+                }}
+                className="h-9 w-9 rounded-xl border border-white/10 bg-white/[0.02] hover:bg-white/[0.06] transition grid place-items-center text-white/90"
+                title="Editar"
+                aria-label="Editar"
+              >
+                <Icon name="edit" />
+              </button>
+
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete();
+                }}
+                className="h-9 w-9 rounded-xl border border-red-500/25 bg-red-500/10 hover:bg-red-500/15 transition grid place-items-center text-red-200"
+                title="Excluir"
+                aria-label="Excluir"
+              >
+                <Icon name="trash" />
+              </button>
+            </div>
+          </div>
+
+          {item.tags?.length ? (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {item.tags.map((t) => (
+                <Pill key={t.id} text={t.name} color={t.color} />
+              ))}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /** ===== Page ===== */
 export default function AdminUtilitiesPage() {
   const router = useRouter();
@@ -546,6 +672,19 @@ export default function AdminUtilitiesPage() {
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+
+  // NEW: view mode (grid/list) + persist
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>(() => {
+    if (typeof window === 'undefined') return 'grid';
+    const raw = window.localStorage.getItem('admin_util_view');
+    return raw === 'list' ? 'list' : 'grid';
+  });
+
+  useEffect(() => {
+    try {
+      window.localStorage.setItem('admin_util_view', viewMode);
+    } catch {}
+  }, [viewMode]);
 
   const breadcrumb = useMemo(() => buildBreadcrumb(folders, activeFolderId), [folders, activeFolderId]);
   const childFolders = useMemo(() => getChildrenFolders(folders, activeFolderId), [folders, activeFolderId]);
@@ -889,6 +1028,35 @@ export default function AdminUtilitiesPage() {
 
           {/* Actions */}
           <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* NEW: view toggle */}
+            <div className="flex items-center rounded-xl border border-white/10 bg-white/[0.03] overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setViewMode('grid')}
+                className={cx(
+                  'h-10 px-3 flex items-center gap-2 text-sm transition',
+                  viewMode === 'grid' ? 'bg-white/[0.08] text-white' : 'text-white/80 hover:bg-white/[0.05]',
+                )}
+                title="Ver em grade"
+              >
+                <Icon name="grid" />
+                Grade
+              </button>
+              <div className="w-px h-10 bg-white/10" />
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className={cx(
+                  'h-10 px-3 flex items-center gap-2 text-sm transition',
+                  viewMode === 'list' ? 'bg-white/[0.08] text-white' : 'text-white/80 hover:bg-white/[0.05]',
+                )}
+                title="Ver em lista"
+              >
+                <Icon name="list" />
+                Lista
+              </button>
+            </div>
+
             {/* Folders drawer */}
             <div className="relative">
               <button
@@ -1150,7 +1318,7 @@ export default function AdminUtilitiesPage() {
         </div>
       </div>
 
-      {/* MAIN GRID (Drive-like) */}
+      {/* MAIN (Drive-like) */}
       <div className="mt-5">
         {err ? (
           <div className="rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
@@ -1181,8 +1349,14 @@ export default function AdminUtilitiesPage() {
 
             {/* Utilities section */}
             <div>
-              <div className="text-white/75 text-xs mb-3 flex items-center gap-2">
-                <Icon name="spark" /> Utilidades
+              <div className="text-white/75 text-xs mb-3 flex items-center justify-between gap-2">
+                <span className="inline-flex items-center gap-2">
+                  <Icon name="spark" /> Utilidades
+                </span>
+
+                <span className="text-white/45 text-xs">
+                  Visualização: <span className="text-white/75">{viewMode === 'grid' ? 'Grade' : 'Lista'}</span>
+                </span>
               </div>
 
               {items.length === 0 ? (
@@ -1195,18 +1369,35 @@ export default function AdminUtilitiesPage() {
                   onDragEnd={onDragEnd}
                   onDragCancel={() => setActiveDragId(null)}
                 >
-                  <SortableContext items={items.map((x) => x.id)} strategy={rectSortingStrategy}>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {items.map((it) => (
-                        <SortableUtilityCard
-                          key={it.id}
-                          item={it}
-                          onOpen={() => openLink(it.url)}
-                          onEdit={() => openEdit(it)}
-                          onDelete={() => removeUtility(it.id)}
-                        />
-                      ))}
-                    </div>
+                  <SortableContext
+                    items={items.map((x) => x.id)}
+                    strategy={viewMode === 'grid' ? rectSortingStrategy : verticalListSortingStrategy}
+                  >
+                    {viewMode === 'grid' ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        {items.map((it) => (
+                          <SortableUtilityCard
+                            key={it.id}
+                            item={it}
+                            onOpen={() => openLink(it.url)}
+                            onEdit={() => openEdit(it)}
+                            onDelete={() => removeUtility(it.id)}
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {items.map((it) => (
+                          <SortableUtilityRow
+                            key={it.id}
+                            item={it}
+                            onOpen={() => openLink(it.url)}
+                            onEdit={() => openEdit(it)}
+                            onDelete={() => removeUtility(it.id)}
+                          />
+                        ))}
+                      </div>
+                    )}
                   </SortableContext>
 
                   <DragOverlay>
