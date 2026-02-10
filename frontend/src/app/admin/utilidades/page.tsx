@@ -42,7 +42,7 @@ type UtilityItem = {
   orderIndex?: number;
   tags?: UtilityTag[];
   createdAt?: string | null;
-  updatedAt?: string | nullz;
+  updatedAt?: string | null;
 };
 
 function cx(...c: Array<string | false | null | undefined>) {
