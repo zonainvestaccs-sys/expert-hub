@@ -345,16 +345,14 @@ model UtilityTag {
 }
 
 model UtilityLinkTag {
-  id        String     @id @default(cuid())
   utilityId String
   tagId     String
 
-  utility   UtilityLink @relation(fields: [utilityId], references: [id], onDelete: Cascade)
-  tag       UtilityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  utility UtilityLink @relation(fields: [utilityId], references: [id], onDelete: Cascade)
+  tag     UtilityTag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
-  @@unique([utilityId, tagId])
+  @@id([utilityId, tagId])
   @@index([tagId])
-  @@index([utilityId])
 }
 
 model UtilityLink {
