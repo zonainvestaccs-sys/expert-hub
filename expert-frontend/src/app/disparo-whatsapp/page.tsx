@@ -1,3 +1,4 @@
+// expert-frontend/src/app/disparo-whatsapp/page.tsx
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
@@ -93,21 +94,7 @@ export default function DisparoWhatsAppPage() {
             <div className="text-white/45 text-sm mt-1">Abra sua ferramenta de disparo configurada pelo admin.</div>
           </div>
 
-          {iframeUrl ? (
-            <a
-              href={iframeUrl}
-              target="_blank"
-              rel="noreferrer"
-              className={cx(
-                'h-10 px-4 rounded-xl border border-white/10',
-                'bg-white/[0.03] hover:bg-white/[0.06] transition',
-                'text-white/85 text-sm font-medium inline-flex items-center gap-2',
-              )}
-              title="Abrir em nova aba"
-            >
-              Abrir em nova aba
-            </a>
-          ) : null}
+          {/* ✅ removido: botão "Abrir em nova aba" */}
         </div>
 
         {err ? (
@@ -125,13 +112,9 @@ export default function DisparoWhatsAppPage() {
             <div className="text-white/85 font-semibold">Disparo não configurado</div>
 
             {!enabled ? (
-              <div className="mt-2 text-white/55 text-sm">
-                O admin desativou o disparo de WhatsApp para este expert.
-              </div>
+              <div className="mt-2 text-white/55 text-sm">O admin desativou o disparo de WhatsApp para este expert.</div>
             ) : (
-              <div className="mt-2 text-white/55 text-sm">
-                Falta configurar a URL do iframe do disparo (no painel admin).
-              </div>
+              <div className="mt-2 text-white/55 text-sm">Falta configurar a URL do iframe do disparo (no painel admin).</div>
             )}
 
             <div className="mt-4 text-white/45 text-sm">
@@ -157,25 +140,10 @@ export default function DisparoWhatsAppPage() {
         {/* estado: ok */}
         {!loading && enabled && iframeUrl ? (
           <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
-              <div className="text-white/80 text-sm">
-                Ferramenta carregada via iframe • Se não abrir, use “Abrir em nova aba”.
-              </div>
-              <a
-                href={iframeUrl}
-                target="_blank"
-                rel="noreferrer"
-                className={cx(
-                  'h-9 px-3 rounded-xl border border-white/10',
-                  'bg-white/[0.03] hover:bg-white/[0.06] transition',
-                  'text-white/80 text-xs font-medium',
-                )}
-              >
-                Abrir em nova aba
-              </a>
-            </div>
+            {/* ✅ removido: header interno com texto "Ferramenta carregada..." e botão "Abrir em nova aba" */}
 
-            <div className="relative w-full" style={{ height: 'calc(100vh - 260px)' }}>
+            {/* ✅ ajustado: altura maior pra evitar scroll desnecessário */}
+            <div className="relative w-full" style={{ height: 'calc(100vh - 210px)' }}>
               <iframe
                 src={iframeUrl}
                 className="absolute inset-0 h-full w-full"
