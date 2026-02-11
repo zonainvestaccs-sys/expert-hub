@@ -72,6 +72,10 @@ model User {
   revSaquesSheetGid    String?
   revSaquesSheetCsvUrl String?
 
+  // ✅✅✅ DISPARO WHATSAPP (ADMIN configura / EXPERT usa)
+  whatsappBlastEnabled   Boolean @default(false)
+  whatsappBlastIframeUrl String?
+
   leads        Lead[]
   deposits     Deposit[]
   metricsDaily MetricsDaily[]
@@ -376,5 +380,3 @@ model UtilityLink {
 
   @@index([folderId, orderIndex])
 }
-
-

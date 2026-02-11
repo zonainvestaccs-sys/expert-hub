@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { clearToken, getToken } from '@/lib/auth';
 import { API_BASE, apiFetch } from '@/lib/api';
-import { LayoutDashboard, Users, CalendarCheck2, CalendarDays, LogOut, Bell } from 'lucide-react';
+import { LayoutDashboard, Users, CalendarCheck2, CalendarDays, LogOut, Bell, MessageCircle } from 'lucide-react';
 import { Eye, EyeOff } from 'lucide-react';
 import { io, type Socket } from 'socket.io-client';
 import { SensitiveModeProvider, SensitiveToggleIconButton, useSensitiveMode } from '@/components/SensitiveMode';
@@ -194,25 +194,51 @@ function applySensitiveHiddenToDom(v: boolean) {
   } catch {}
 }
 
+/* -------------------- ✅ WhatsApp Blast helpers (expert) -------------------- */
+
+function canAccessWhatsappBlast(me: {
+  whatsappBlastEnabled?: boolean;
+  whatsappBlastIframeUrl?: string | null;
+} | null) {
+  if (!me) return false;
+  const enabled = me.whatsappBlastEnabled !== false; // default true se vier undefined
+  const url = String(me.whatsappBlastIframeUrl ?? '').trim();
+  return enabled && !!url;
+}
+
 function ExpertShellInner({
   me,
   children,
 }: {
-  me: { email?: string; photoUrl?: string | null } | null;
+  me: {
+    email?: string;
+    photoUrl?: string | null;
+
+    // ✅ novo: controle do Disparo WhatsApp (iframe)
+    whatsappBlastEnabled?: boolean;
+    whatsappBlastIframeUrl?: string | null;
+  } | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const router = useRouter();
 
-  const nav = useMemo(
-    () => [
+  const showWhatsappBlast = useMemo(() => canAccessWhatsappBlast(me), [me]);
+
+  const nav = useMemo(() => {
+    const base = [
       { href: '/', label: 'Dashboard', icon: LayoutDashboard },
       { href: '/leads', label: 'Leads', icon: Users },
       { href: '/ativacoes', label: 'Ativações', icon: CalendarCheck2 },
       { href: '/cronograma', label: 'Cronograma', icon: CalendarDays },
-    ],
-    [],
-  );
+    ] as Array<{ href: string; label: string; icon: any }>;
+
+    if (showWhatsappBlast) {
+      base.push({ href: '/disparo-whatsapp', label: 'Disparo WhatsApp', icon: MessageCircle });
+    }
+
+    return base;
+  }, [showWhatsappBlast]);
 
   const photoSrc = resolvePhotoUrl(me?.photoUrl);
 
@@ -223,9 +249,11 @@ function ExpertShellInner({
         ? 'Ativações'
         : pathname === '/cronograma' || pathname.startsWith('/cronograma/')
           ? 'Cronograma'
-          : pathname === '/expert/profile' || pathname.startsWith('/expert/profile/')
-            ? 'Perfil'
-            : 'Dashboard';
+          : pathname === '/disparo-whatsapp' || pathname.startsWith('/disparo-whatsapp/')
+            ? 'Disparo WhatsApp'
+            : pathname === '/expert/profile' || pathname.startsWith('/expert/profile/')
+              ? 'Perfil'
+              : 'Dashboard';
 
   /* -------------------- NOTIFICAÇÕES (push + sino + local bridge) -------------------- */
 
@@ -939,7 +967,10 @@ function ExpertShellInner({
                                 key={n.id}
                                 type="button"
                                 onClick={() => readOne(n.id)}
-                                className={cx('w-full text-left px-4 py-3 border-b border-white/10 last:border-b-0', 'hover:bg-white/[0.04] transition')}
+                                className={cx(
+                                  'w-full text-left px-4 py-3 border-b border-white/10 last:border-b-0',
+                                  'hover:bg-white/[0.04] transition',
+                                )}
                               >
                                 <div className="flex items-start justify-between gap-3">
                                   <div className="min-w-0">
@@ -947,7 +978,12 @@ function ExpertShellInner({
                                       {n.title}
                                     </div>
 
-                                    <div className={cx('mt-1 text-sm whitespace-pre-wrap zi-sensitive', n.isRead ? 'text-white/55' : 'text-white/70')}>
+                                    <div
+                                      className={cx(
+                                        'mt-1 text-sm whitespace-pre-wrap zi-sensitive',
+                                        n.isRead ? 'text-white/55' : 'text-white/70',
+                                      )}
+                                    >
                                       {n.message}
                                     </div>
 
@@ -1058,7 +1094,9 @@ function ExpertShellInner({
                         </button>
                       </div>
 
-                      <div className={cx('mt-2 text-sm whitespace-pre-wrap zi-sensitive', isActivation ? 'text-white/75' : 'text-white/70')}>{t.message}</div>
+                      <div className={cx('mt-2 text-sm whitespace-pre-wrap zi-sensitive', isActivation ? 'text-white/75' : 'text-white/70')}>
+                        {t.message}
+                      </div>
 
                       {isActivation ? (
                         <div
@@ -1090,7 +1128,14 @@ export default function ExpertShell({
   me,
   children,
 }: {
-  me: { email?: string; photoUrl?: string | null } | null;
+  me: {
+    email?: string;
+    photoUrl?: string | null;
+
+    // ✅ novo: controle do Disparo WhatsApp (iframe)
+    whatsappBlastEnabled?: boolean;
+    whatsappBlastIframeUrl?: string | null;
+  } | null;
   children: React.ReactNode;
 }) {
   return (

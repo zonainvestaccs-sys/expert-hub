@@ -256,6 +256,10 @@ type ExpertOverview = {
     whatsappUrl?: string | null;
     telegramUrl?: string | null;
 
+    // ✅ WHATSAPP BLAST (iframe)
+    whatsappBlastEnabled?: boolean;
+    whatsappBlastIframeUrl?: string | null;
+
     // ✅ SHEETS (LEADS)
     leadsSheetCsvUrl?: string | null;
     leadsSheetId?: string | null;
@@ -355,7 +359,8 @@ function hasDetails(expert?: ExpertOverview['expert'] | null) {
   const i = String(expert?.instagramUrl ?? '').trim();
   const w = String(expert?.whatsappUrl ?? '').trim();
   const t = String(expert?.telegramUrl ?? '').trim();
-  return !!(d || y || i || w || t);
+  const blast = String(expert?.whatsappBlastIframeUrl ?? '').trim();
+  return !!(d || y || i || w || t || blast);
 }
 
 function LinkLine({ label, url }: { label: string; url?: string | null }) {
@@ -809,6 +814,10 @@ export default function AdminExpertDetailPage() {
   const [editWhatsappUrl, setEditWhatsappUrl] = useState('');
   const [editTelegramUrl, setEditTelegramUrl] = useState('');
 
+  // ✅ WHATSAPP BLAST (iframe)
+  const [editWhatsappBlastEnabled, setEditWhatsappBlastEnabled] = useState(true);
+  const [editWhatsappBlastIframeUrl, setEditWhatsappBlastIframeUrl] = useState('');
+
   // ✅ LEADS sheets
   const [editLeadsSheetCsvUrl, setEditLeadsSheetCsvUrl] = useState('');
   const [editLeadsSheetId, setEditLeadsSheetId] = useState('');
@@ -900,6 +909,10 @@ export default function AdminExpertDetailPage() {
       setEditInstagramUrl(String(ov?.expert?.instagramUrl ?? ''));
       setEditWhatsappUrl(String(ov?.expert?.whatsappUrl ?? ''));
       setEditTelegramUrl(String(ov?.expert?.telegramUrl ?? ''));
+
+      // ✅ hydrate whatsapp blast
+      setEditWhatsappBlastEnabled(ov?.expert?.whatsappBlastEnabled !== false);
+      setEditWhatsappBlastIframeUrl(String(ov?.expert?.whatsappBlastIframeUrl ?? ''));
 
       // ✅ hydrate leads sheets
       setEditLeadsSheetCsvUrl(String(ov?.expert?.leadsSheetCsvUrl ?? ''));
@@ -1127,6 +1140,10 @@ export default function AdminExpertDetailPage() {
         whatsappUrl: editWhatsappUrl,
         telegramUrl: editTelegramUrl,
 
+        // ✅ WhatsApp Blast
+        whatsappBlastEnabled: !!editWhatsappBlastEnabled,
+        whatsappBlastIframeUrl: String(editWhatsappBlastIframeUrl ?? '').trim(),
+
         // ✅ leads sheets
         leadsSheetCsvUrl: editLeadsSheetCsvUrl,
         leadsSheetId: editLeadsSheetId,
@@ -1248,6 +1265,10 @@ export default function AdminExpertDetailPage() {
 
   const notifCount = (notifTimes || []).length;
 
+  const blastEnabled = overview?.expert?.whatsappBlastEnabled !== false;
+  const blastUrl = String(overview?.expert?.whatsappBlastIframeUrl ?? '').trim();
+  const blastStatusLabel = blastEnabled ? (blastUrl ? 'ativo' : 'sem URL') : 'desativado';
+
   /* ✅✅✅ Efeito: soma REV SAQUES direto do CSV (sem mostrar "Fonte" nem alertas) */
   useEffect(() => {
     const exp = overview?.expert;
@@ -1345,6 +1366,11 @@ export default function AdminExpertDetailPage() {
                   <span className="text-white/70">
                     <Sensitive placeholder="•• horário(s)">{notifIsActive ? `${notifCount} horário(s)` : 'desativadas'}</Sensitive>
                   </span>
+                  <span className="text-white/25"> • </span>
+                  Disparo WhatsApp:{' '}
+                  <span className="text-white/70">
+                    <Sensitive placeholder="••••••">{blastStatusLabel}</Sensitive>
+                  </span>
                 </div>
               </div>
             </div>
@@ -1426,6 +1452,12 @@ export default function AdminExpertDetailPage() {
               <LinkLine label="Instagram" url={overview?.expert?.instagramUrl ?? ''} />
               <LinkLine label="WhatsApp" url={overview?.expert?.whatsappUrl ?? ''} />
               <LinkLine label="Telegram" url={overview?.expert?.telegramUrl ?? ''} />
+
+              {/* ✅ WhatsApp Blast */}
+              {blastUrl ? <LinkLine label="Disparo WhatsApp (iframe)" url={blastUrl} /> : null}
+              <div className="text-white/45 text-xs">
+                Status do disparo: <span className="text-white/70">{blastStatusLabel}</span>
+              </div>
             </div>
           </div>
         ) : null}
@@ -1737,6 +1769,45 @@ export default function AdminExpertDetailPage() {
                         placeholder="Se deixar vazio, não muda"
                       />
                       <div className="text-white/45 text-xs mt-2">Se deixar vazio, a senha não muda.</div>
+                    </div>
+                  </div>
+
+                  {/* ✅ WhatsApp Blast */}
+                  <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-white/[0.02] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-white/80 text-sm font-semibold">Disparo WhatsApp (iframe)</div>
+                        <div className="text-white/45 text-xs mt-1">
+                          Liga/desliga o acesso do expert à página <span className="text-white/70">/disparo-whatsapp</span> e define a URL do iframe.
+                        </div>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => setEditWhatsappBlastEnabled((v) => !v)}
+                        className={cx(
+                          'h-9 px-4 rounded-xl border border-white/10 text-sm font-medium transition shrink-0',
+                          editWhatsappBlastEnabled
+                            ? 'bg-emerald-500/12 text-emerald-200 hover:bg-emerald-500/16'
+                            : 'bg-white/[0.02] text-white/70 hover:bg-white/[0.05]',
+                        )}
+                        title="Ativar/Inativar disparo"
+                      >
+                        {editWhatsappBlastEnabled ? 'Ativo' : 'Desativado'}
+                      </button>
+                    </div>
+
+                    <div>
+                      <div className="text-white/55 text-xs mb-2">URL do iframe</div>
+                      <input
+                        value={editWhatsappBlastIframeUrl}
+                        onChange={(e) => setEditWhatsappBlastIframeUrl(e.target.value)}
+                        className="w-full h-11 rounded-xl border border-white/10 bg-black/30 px-3 text-white/85 text-sm outline-none focus:border-white/20"
+                        placeholder="https://..."
+                      />
+                      <div className="text-white/45 text-xs mt-2">
+                        Dica: se o site bloquear iframe (X-Frame-Options/CSP), o expert pode usar o botão “Abrir em nova aba”.
+                      </div>
                     </div>
                   </div>
 

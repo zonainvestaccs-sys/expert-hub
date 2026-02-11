@@ -468,6 +468,10 @@ export class ExpertsService {
         revSaquesSheetCsvUrl: true,
         revSaquesSheetGid: true,
 
+        // ✅✅✅ NOVO: DISPARO WHATSAPP
+        whatsappBlastEnabled: true,
+        whatsappBlastIframeUrl: true,
+
         notificationRule: {
           select: {
             id: true,

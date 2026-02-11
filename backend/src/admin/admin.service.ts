@@ -407,6 +407,10 @@ export class AdminService {
           revSaquesSheetId: true,
           revSaquesSheetTab: true,
           revSaquesSheetGid: true,
+
+          // ✅✅✅ DISPARO WHATSAPP
+          whatsappBlastEnabled: true,
+          whatsappBlastIframeUrl: true,
         } as any,
       });
 
@@ -475,6 +479,10 @@ export class AdminService {
         revSaquesSheetId: cleanNullableString(body?.revSaquesSheetId),
         revSaquesSheetTab: cleanNullableString(body?.revSaquesSheetTab),
         revSaquesSheetGid: cleanNullableString(body?.revSaquesSheetGid),
+
+        // ✅✅✅ DISPARO WHATSAPP
+        whatsappBlastEnabled: typeof body?.whatsappBlastEnabled === 'boolean' ? body.whatsappBlastEnabled : false,
+        whatsappBlastIframeUrl: cleanNullableString(body?.whatsappBlastIframeUrl),
       };
 
       const created = await this.prisma.user.create({
@@ -512,6 +520,10 @@ export class AdminService {
           revSaquesSheetId: true,
           revSaquesSheetTab: true,
           revSaquesSheetGid: true,
+
+          // ✅✅✅ DISPARO WHATSAPP
+          whatsappBlastEnabled: true,
+          whatsappBlastIframeUrl: true,
         } as any,
       });
 
@@ -815,6 +827,10 @@ export class AdminService {
           revSaquesSheetTab: true,
           revSaquesSheetGid: true,
           revSaquesSheetCsvUrl: true,
+
+          // ✅✅✅ DISPARO WHATSAPP
+          whatsappBlastEnabled: true,
+          whatsappBlastIframeUrl: true,
         } as any,
       });
 
@@ -882,6 +898,10 @@ export class AdminService {
           revSaquesSheetTab: (expert as any).revSaquesSheetTab ?? null,
           revSaquesSheetGid: (expert as any).revSaquesSheetGid ?? null,
           revSaquesSheetCsvUrl: (expert as any).revSaquesSheetCsvUrl ?? null,
+
+          // ✅✅✅ DISPARO WHATSAPP
+          whatsappBlastEnabled: (expert as any).whatsappBlastEnabled === true,
+          whatsappBlastIframeUrl: (expert as any).whatsappBlastIframeUrl ?? null,
         },
         kpis: {
           leadsTotal: Number(s.leadsTotal ?? 0),
@@ -1329,6 +1349,17 @@ export class AdminService {
       if (typeof body?.revSaquesSheetTab === 'string') data.revSaquesSheetTab = cleanNullableString(body.revSaquesSheetTab);
       if (typeof body?.revSaquesSheetGid === 'string') data.revSaquesSheetGid = cleanNullableString(body.revSaquesSheetGid);
 
+      // ✅✅✅ DISPARO WHATSAPP
+      if (typeof body?.whatsappBlastEnabled === 'boolean') {
+        data.whatsappBlastEnabled = body.whatsappBlastEnabled;
+        if (body.whatsappBlastEnabled === false) {
+          data.whatsappBlastIframeUrl = null; // desativou => limpa URL
+        }
+      }
+      if (typeof body?.whatsappBlastIframeUrl === 'string') {
+        data.whatsappBlastIframeUrl = cleanNullableString(body.whatsappBlastIframeUrl);
+      }
+
       const updated = await this.prisma.user.update({
         where: { id: expertId },
         data: data as any,
@@ -1364,6 +1395,10 @@ export class AdminService {
           revSaquesSheetId: true,
           revSaquesSheetTab: true,
           revSaquesSheetGid: true,
+
+          // ✅✅✅ DISPARO WHATSAPP
+          whatsappBlastEnabled: true,
+          whatsappBlastIframeUrl: true,
         } as any,
       });
 
@@ -1560,520 +1595,524 @@ export class AdminService {
     return total;
   }
 
-// =========================
-// ✅✅✅ UTILIDADES (ADMIN) — Drive-like folders + tags + filters + edit + reorder + move
-// =========================
+  // =========================
+  // ✅✅✅ UTILIDADES (ADMIN) — Drive-like folders + tags + filters + edit + reorder + move
+  // =========================
 
-private normalizeUrl(input: any) {
-  const v = String(input ?? '').trim();
-  if (!v) return '';
-  if (v.startsWith('http://') || v.startsWith('https://')) return v;
-  return `https://${v}`;
-}
-
-private safeExtFromMimeOrName(file?: Express.Multer.File) {
-  const nameExt = file?.originalname ? path.extname(file.originalname) : '';
-  const ext = (nameExt || '').toLowerCase();
-
-  const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']);
-  if (allowed.has(ext)) return ext === '.jpeg' ? '.jpg' : ext;
-
-  const mime = String(file?.mimetype || '').toLowerCase();
-  if (mime.includes('png')) return '.png';
-  if (mime.includes('webp')) return '.webp';
-  if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
-
-  return '';
-}
-
-private toUtilityDto(row: any) {
-  const tags = (row?.tags || []).map((t: any) => ({
-    id: String(t?.tag?.id),
-    name: String(t?.tag?.name || ''),
-    color: t?.tag?.color ?? null,
-  }));
-
-  return {
-    id: String(row?.id),
-    name: String(row?.name || ''),
-    url: String(row?.url || ''),
-    description: row?.description ?? null,
-    imageUrl: row?.imageUrl ?? null,
-    folderId: row?.folderId ?? null,
-    folder: row?.folder
-      ? {
-          id: String(row.folder.id),
-          name: String(row.folder.name || ''),
-          orderIndex: Number(row.folder.orderIndex ?? 0),
-          parentId: row.folder.parentId ?? null,
-        }
-      : null,
-    tags,
-    orderIndex: Number(row?.orderIndex ?? 0),
-    createdAt: row?.createdAt ? new Date(row.createdAt).toISOString() : null,
-    updatedAt: row?.updatedAt ? new Date(row.updatedAt).toISOString() : null,
-  };
-}
-
-// ---------- FOLDERS (tree) ----------
-
-async listUtilityFoldersTree() {
-  const rows = await (this.prisma as any).utilityFolder.findMany({
-    orderBy: [{ orderIndex: 'asc' }, { name: 'asc' }],
-    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
-  });
-
-  const items = (rows || []).map((x: any) => ({
-    id: String(x.id),
-    name: String(x.name || ''),
-    orderIndex: Number(x.orderIndex ?? 0),
-    parentId: x.parentId ?? null,
-    createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
-    updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
-  }));
-
-  // monta árvore
-  const byId = new Map<string, any>();
-  items.forEach((it: any) => byId.set(it.id, { ...it, children: [] as any[] }));
-
-  const roots: any[] = [];
-  for (const it of items) {
-    const node = byId.get(it.id);
-    if (it.parentId && byId.has(it.parentId)) byId.get(it.parentId).children.push(node);
-    else roots.push(node);
+  private normalizeUrl(input: any) {
+    const v = String(input ?? '').trim();
+    if (!v) return '';
+    if (v.startsWith('http://') || v.startsWith('https://')) return v;
+    return `https://${v}`;
   }
 
-  // ordena recursivo por orderIndex
-  const sortRec = (arr: any[]) => {
-    arr.sort((a, b) => (a.orderIndex - b.orderIndex) || String(a.name).localeCompare(String(b.name)));
-    arr.forEach((x) => sortRec(x.children || []));
-  };
-  sortRec(roots);
+  private safeExtFromMimeOrName(file?: Express.Multer.File) {
+    const nameExt = file?.originalname ? path.extname(file.originalname) : '';
+    const ext = (nameExt || '').toLowerCase();
 
-  return { items: roots };
-}
+    const allowed = new Set(['.png', '.jpg', '.jpeg', '.webp']);
+    if (allowed.has(ext)) return ext === '.jpeg' ? '.jpg' : ext;
 
-async createUtilityFolder(body: { name: string; parentId?: string | null }) {
-  const name = String(body?.name || '').trim();
-  const parentId = body?.parentId ? String(body.parentId).trim() : null;
+    const mime = String(file?.mimetype || '').toLowerCase();
+    if (mime.includes('png')) return '.png';
+    if (mime.includes('webp')) return '.webp';
+    if (mime.includes('jpeg') || mime.includes('jpg')) return '.jpg';
 
-  if (!name) throw new Error('name obrigatório');
-  if (name.length > 60) throw new Error('name muito grande (máx 60)');
+    return '';
+  }
 
-  const max = await (this.prisma as any).utilityFolder.aggregate({
-    where: { parentId },
-    _max: { orderIndex: true },
-  });
-  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+  private toUtilityDto(row: any) {
+    const tags = (row?.tags || []).map((t: any) => ({
+      id: String(t?.tag?.id),
+      name: String(t?.tag?.name || ''),
+      color: t?.tag?.color ?? null,
+    }));
 
-  const created = await (this.prisma as any).utilityFolder.create({
-    data: { name, parentId, orderIndex: nextOrder },
-    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
-  });
+    return {
+      id: String(row?.id),
+      name: String(row?.name || ''),
+      url: String(row?.url || ''),
+      description: row?.description ?? null,
+      imageUrl: row?.imageUrl ?? null,
+      folderId: row?.folderId ?? null,
+      folder: row?.folder
+        ? {
+            id: String(row.folder.id),
+            name: String(row.folder.name || ''),
+            orderIndex: Number(row.folder.orderIndex ?? 0),
+            parentId: row.folder.parentId ?? null,
+          }
+        : null,
+      tags,
+      orderIndex: Number(row?.orderIndex ?? 0),
+      createdAt: row?.createdAt ? new Date(row.createdAt).toISOString() : null,
+      updatedAt: row?.updatedAt ? new Date(row.updatedAt).toISOString() : null,
+    };
+  }
 
-  return {
-    id: String(created.id),
-    name: String(created.name || ''),
-    orderIndex: Number(created.orderIndex ?? 0),
-    parentId: created.parentId ?? null,
-    createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
-    updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
-  };
-}
+  // ---------- FOLDERS (tree) ----------
 
-async updateUtilityFolder(id: string, body: { name: string; parentId?: string | null }) {
-  const folderId = String(id || '').trim();
-  if (!folderId) throw new Error('id obrigatório');
+  async listUtilityFoldersTree() {
+    const rows = await (this.prisma as any).utilityFolder.findMany({
+      orderBy: [{ orderIndex: 'asc' }, { name: 'asc' }],
+      select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
+    });
 
-  const name = String(body?.name || '').trim();
-  const parentId = body?.parentId ? String(body.parentId).trim() : null;
-
-  if (!name) throw new Error('name obrigatório');
-
-  const updated = await (this.prisma as any).utilityFolder.update({
-    where: { id: folderId },
-    data: { name, parentId },
-    select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
-  });
-
-  return {
-    id: String(updated.id),
-    name: String(updated.name || ''),
-    orderIndex: Number(updated.orderIndex ?? 0),
-    parentId: updated.parentId ?? null,
-    createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
-    updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
-  };
-}
-
-async deleteUtilityFolder(id: string) {
-  const folderId = String(id || '').trim();
-  if (!folderId) throw new Error('id obrigatório');
-
-  // move utilidades pra raiz
-  await (this.prisma as any).utilityLink.updateMany({
-    where: { folderId },
-    data: { folderId: null },
-  });
-
-  // move filhos pra raiz (drive-like simples)
-  await (this.prisma as any).utilityFolder.updateMany({
-    where: { parentId: folderId },
-    data: { parentId: null },
-  });
-
-  await (this.prisma as any).utilityFolder.delete({ where: { id: folderId } });
-  return { ok: true };
-}
-
-async reorderFolders(orderedIds: string[]) {
-  const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
-  if (!ids.length) return { ok: true };
-
-  const rows = await (this.prisma as any).utilityFolder.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, parentId: true },
-  });
-  if (!rows.length) return { ok: true };
-
-  const parentKey = String(rows[0].parentId ?? '');
-  const mixed = rows.some((r: any) => String(r.parentId ?? '') !== parentKey);
-  if (mixed) throw new Error('Reordenação inválida: pastas de níveis diferentes');
-
-  await (this.prisma as any).$transaction(
-    ids.map((fid, idx) =>
-      (this.prisma as any).utilityFolder.update({
-        where: { id: fid },
-        data: { orderIndex: idx + 1 },
-        select: { id: true },
-      }),
-    ),
-  );
-
-  return { ok: true };
-}
-
-// ---------- TAGS ----------
-
-async listUtilityTags() {
-  const rows = await (this.prisma as any).utilityTag.findMany({
-    orderBy: [{ name: 'asc' }],
-    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
-  });
-
-  return {
-    items: (rows || []).map((x: any) => ({
+    const items = (rows || []).map((x: any) => ({
       id: String(x.id),
       name: String(x.name || ''),
-      color: x.color ?? null,
+      orderIndex: Number(x.orderIndex ?? 0),
+      parentId: x.parentId ?? null,
       createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
       updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
-    })),
-  };
-}
+    }));
 
-async createUtilityTag(body: { name: string; color?: string | null }) {
-  const name = String(body?.name || '').trim();
-  if (!name) throw new Error('name obrigatório');
-  if (name.length > 40) throw new Error('name muito grande (máx 40)');
+    // monta árvore
+    const byId = new Map<string, any>();
+    items.forEach((it: any) => byId.set(it.id, { ...it, children: [] as any[] }));
 
-  const color = body?.color ? String(body.color).trim() : null;
-
-  const created = await (this.prisma as any).utilityTag.create({
-    data: { name, color: color || null },
-    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
-  });
-
-  return {
-    id: String(created.id),
-    name: String(created.name || ''),
-    color: created.color ?? null,
-    createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
-    updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
-  };
-}
-
-async updateUtilityTag(id: string, body: { name: string; color?: string | null }) {
-  const tagId = String(id || '').trim();
-  if (!tagId) throw new Error('id obrigatório');
-
-  const name = String(body?.name || '').trim();
-  if (!name) throw new Error('name obrigatório');
-
-  const color = body?.color ? String(body.color).trim() : null;
-
-  const updated = await (this.prisma as any).utilityTag.update({
-    where: { id: tagId },
-    data: { name, color: color || null },
-    select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
-  });
-
-  return {
-    id: String(updated.id),
-    name: String(updated.name || ''),
-    color: updated.color ?? null,
-    createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
-    updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
-  };
-}
-
-async deleteUtilityTag(id: string) {
-  const tagId = String(id || '').trim();
-  if (!tagId) throw new Error('id obrigatório');
-
-  await (this.prisma as any).utilityLinkTag.deleteMany({ where: { tagId } });
-  await (this.prisma as any).utilityTag.delete({ where: { id: tagId } });
-  return { ok: true };
-}
-
-// ---------- LIST / CREATE / UPDATE / DELETE ----------
-
-async listUtilities(params?: { folderId?: string; tagIds?: string[]; q?: string }) {
-  const folderId = String(params?.folderId || '').trim();
-  const tagIds = Array.isArray(params?.tagIds) ? params!.tagIds!.map(String).filter(Boolean) : [];
-  const q = String(params?.q || '').trim();
-
-  const where: any = {};
-  // folderId vazio => raiz
-  if (folderId) where.folderId = folderId;
-  else where.folderId = null;
-
-  if (q) {
-    where.OR = [
-      { name: { contains: q, mode: 'insensitive' } },
-      { url: { contains: q, mode: 'insensitive' } },
-      { description: { contains: q, mode: 'insensitive' } },
-    ];
-  }
-
-  // “tem todas as tags selecionadas”
-  if (tagIds.length) {
-    where.AND = tagIds.map((tid) => ({ tags: { some: { tagId: tid } } }));
-  }
-
-  const rows = await (this.prisma as any).utilityLink.findMany({
-    where,
-    orderBy: [{ orderIndex: 'asc' }, { createdAt: 'desc' }],
-    include: { folder: true, tags: { include: { tag: true } } },
-  });
-
-  return { items: (rows || []).map((r: any) => this.toUtilityDto(r)) };
-}
-
-async createUtility(
-  body: { name: string; url: string; description?: string; folderId?: string; tagIds?: string[] },
-  file?: Express.Multer.File,
-) {
-  const name = String(body?.name || '').trim();
-  const url = this.normalizeUrl(body?.url);
-  const description = typeof body?.description === 'string' ? cleanNullableString(body.description) : null;
-  const folderId = String(body?.folderId || '').trim() || null;
-  const tagIds = Array.isArray(body?.tagIds) ? body!.tagIds!.map(String).filter(Boolean) : [];
-
-  if (!name) throw new Error('name obrigatório');
-  if (name.length > 80) throw new Error('name muito grande (máx 80)');
-  if (!url) throw new Error('url obrigatório');
-
-  let imageUrl: string | null = null;
-
-  if (file) {
-    const ext = this.safeExtFromMimeOrName(file);
-    if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
-    if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
-
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
-    fs.mkdirSync(uploadsDir, { recursive: true });
-
-    const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
-    const filepath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filepath, file.buffer);
-
-    imageUrl = `/uploads/admin/utilities/${filename}`;
-  }
-
-  const max = await (this.prisma as any).utilityLink.aggregate({
-    where: { folderId },
-    _max: { orderIndex: true },
-  });
-  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
-
-  const created = await (this.prisma as any).utilityLink.create({
-    data: {
-      name,
-      url,
-      description,
-      imageUrl,
-      folderId,
-      orderIndex: nextOrder,
-      tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
-    },
-    include: { folder: true, tags: { include: { tag: true } } },
-  });
-
-  return this.toUtilityDto(created);
-}
-
-async updateUtility(
-  id: string,
-  body: { name?: string; url?: string; description?: string; folderId?: string; tagIds?: string[] },
-  file?: Express.Multer.File,
-) {
-  const utilityId = String(id || '').trim();
-  if (!utilityId) throw new Error('id obrigatório');
-
-  const exists = await (this.prisma as any).utilityLink.findUnique({
-    where: { id: utilityId },
-    include: { tags: true },
-  });
-  if (!exists) throw new Error('Utilidade não encontrada');
-
-  const data: any = {};
-
-  if (typeof body?.name === 'string') {
-    const nm = body.name.trim();
-    if (!nm) throw new Error('name obrigatório');
-    if (nm.length > 80) throw new Error('name muito grande (máx 80)');
-    data.name = nm;
-  }
-
-  if (typeof body?.url === 'string') {
-    const u = this.normalizeUrl(body.url);
-    if (!u) throw new Error('url obrigatório');
-    data.url = u;
-  }
-
-  if (typeof body?.description === 'string') data.description = cleanNullableString(body.description);
-
-  // mover pasta: joga pro final do destino
-  if (typeof body?.folderId === 'string') {
-    const newFolderId = body.folderId.trim() || null;
-    const oldFolderId = exists.folderId ?? null;
-
-    if (newFolderId !== oldFolderId) {
-      const max = await (this.prisma as any).utilityLink.aggregate({
-        where: { folderId: newFolderId },
-        _max: { orderIndex: true },
-      });
-      data.folderId = newFolderId;
-      data.orderIndex = Number(max?._max?.orderIndex ?? 0) + 1;
+    const roots: any[] = [];
+    for (const it of items) {
+      const node = byId.get(it.id);
+      if (it.parentId && byId.has(it.parentId)) byId.get(it.parentId).children.push(node);
+      else roots.push(node);
     }
+
+    // ordena recursivo por orderIndex
+    const sortRec = (arr: any[]) => {
+      arr.sort((a, b) => a.orderIndex - b.orderIndex || String(a.name).localeCompare(String(b.name)));
+      arr.forEach((x) => sortRec(x.children || []));
+    };
+    sortRec(roots);
+
+    return { items: roots };
   }
 
-  // substituir imagem
-  if (file) {
-    const ext = this.safeExtFromMimeOrName(file);
-    if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
-    if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+  async createUtilityFolder(body: { name: string; parentId?: string | null }) {
+    const name = String(body?.name || '').trim();
+    const parentId = body?.parentId ? String(body.parentId).trim() : null;
 
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
-    fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!name) throw new Error('name obrigatório');
+    if (name.length > 60) throw new Error('name muito grande (máx 60)');
 
-    const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
-    const filepath = path.join(uploadsDir, filename);
-    fs.writeFileSync(filepath, file.buffer);
+    const max = await (this.prisma as any).utilityFolder.aggregate({
+      where: { parentId },
+      _max: { orderIndex: true },
+    });
+    const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
 
-    data.imageUrl = `/uploads/admin/utilities/${filename}`;
+    const created = await (this.prisma as any).utilityFolder.create({
+      data: { name, parentId, orderIndex: nextOrder },
+      select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
+    });
 
-    const oldImg = String(exists.imageUrl || '').trim();
-    if (oldImg && oldImg.startsWith('/uploads/')) {
-      const rel = oldImg.replace(/^\/uploads\//, '');
-      const full = path.join(process.cwd(), 'uploads', rel);
-      try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch {}
+    return {
+      id: String(created.id),
+      name: String(created.name || ''),
+      orderIndex: Number(created.orderIndex ?? 0),
+      parentId: created.parentId ?? null,
+      createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
+      updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
+    };
+  }
+
+  async updateUtilityFolder(id: string, body: { name: string; parentId?: string | null }) {
+    const folderId = String(id || '').trim();
+    if (!folderId) throw new Error('id obrigatório');
+
+    const name = String(body?.name || '').trim();
+    const parentId = body?.parentId ? String(body.parentId).trim() : null;
+
+    if (!name) throw new Error('name obrigatório');
+
+    const updated = await (this.prisma as any).utilityFolder.update({
+      where: { id: folderId },
+      data: { name, parentId },
+      select: { id: true, name: true, orderIndex: true, parentId: true, createdAt: true, updatedAt: true },
+    });
+
+    return {
+      id: String(updated.id),
+      name: String(updated.name || ''),
+      orderIndex: Number(updated.orderIndex ?? 0),
+      parentId: updated.parentId ?? null,
+      createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
+      updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
+    };
+  }
+
+  async deleteUtilityFolder(id: string) {
+    const folderId = String(id || '').trim();
+    if (!folderId) throw new Error('id obrigatório');
+
+    // move utilidades pra raiz
+    await (this.prisma as any).utilityLink.updateMany({
+      where: { folderId },
+      data: { folderId: null },
+    });
+
+    // move filhos pra raiz (drive-like simples)
+    await (this.prisma as any).utilityFolder.updateMany({
+      where: { parentId: folderId },
+      data: { parentId: null },
+    });
+
+    await (this.prisma as any).utilityFolder.delete({ where: { id: folderId } });
+    return { ok: true };
+  }
+
+  async reorderFolders(orderedIds: string[]) {
+    const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
+    if (!ids.length) return { ok: true };
+
+    const rows = await (this.prisma as any).utilityFolder.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, parentId: true },
+    });
+    if (!rows.length) return { ok: true };
+
+    const parentKey = String(rows[0].parentId ?? '');
+    const mixed = rows.some((r: any) => String(r.parentId ?? '') !== parentKey);
+    if (mixed) throw new Error('Reordenação inválida: pastas de níveis diferentes');
+
+    await (this.prisma as any).$transaction(
+      ids.map((fid, idx) =>
+        (this.prisma as any).utilityFolder.update({
+          where: { id: fid },
+          data: { orderIndex: idx + 1 },
+          select: { id: true },
+        }),
+      ),
+    );
+
+    return { ok: true };
+  }
+
+  // ---------- TAGS ----------
+
+  async listUtilityTags() {
+    const rows = await (this.prisma as any).utilityTag.findMany({
+      orderBy: [{ name: 'asc' }],
+      select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+    });
+
+    return {
+      items: (rows || []).map((x: any) => ({
+        id: String(x.id),
+        name: String(x.name || ''),
+        color: x.color ?? null,
+        createdAt: x.createdAt ? new Date(x.createdAt).toISOString() : null,
+        updatedAt: x.updatedAt ? new Date(x.updatedAt).toISOString() : null,
+      })),
+    };
+  }
+
+  async createUtilityTag(body: { name: string; color?: string | null }) {
+    const name = String(body?.name || '').trim();
+    if (!name) throw new Error('name obrigatório');
+    if (name.length > 40) throw new Error('name muito grande (máx 40)');
+
+    const color = body?.color ? String(body.color).trim() : null;
+
+    const created = await (this.prisma as any).utilityTag.create({
+      data: { name, color: color || null },
+      select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+    });
+
+    return {
+      id: String(created.id),
+      name: String(created.name || ''),
+      color: created.color ?? null,
+      createdAt: created.createdAt ? new Date(created.createdAt).toISOString() : null,
+      updatedAt: created.updatedAt ? new Date(created.updatedAt).toISOString() : null,
+    };
+  }
+
+  async updateUtilityTag(id: string, body: { name: string; color?: string | null }) {
+    const tagId = String(id || '').trim();
+    if (!tagId) throw new Error('id obrigatório');
+
+    const name = String(body?.name || '').trim();
+    if (!name) throw new Error('name obrigatório');
+
+    const color = body?.color ? String(body.color).trim() : null;
+
+    const updated = await (this.prisma as any).utilityTag.update({
+      where: { id: tagId },
+      data: { name, color: color || null },
+      select: { id: true, name: true, color: true, createdAt: true, updatedAt: true },
+    });
+
+    return {
+      id: String(updated.id),
+      name: String(updated.name || ''),
+      color: updated.color ?? null,
+      createdAt: updated.createdAt ? new Date(updated.createdAt).toISOString() : null,
+      updatedAt: updated.updatedAt ? new Date(updated.updatedAt).toISOString() : null,
+    };
+  }
+
+  async deleteUtilityTag(id: string) {
+    const tagId = String(id || '').trim();
+    if (!tagId) throw new Error('id obrigatório');
+
+    await (this.prisma as any).utilityLinkTag.deleteMany({ where: { tagId } });
+    await (this.prisma as any).utilityTag.delete({ where: { id: tagId } });
+    return { ok: true };
+  }
+
+  // ---------- LIST / CREATE / UPDATE / DELETE ----------
+
+  async listUtilities(params?: { folderId?: string; tagIds?: string[]; q?: string }) {
+    const folderId = String(params?.folderId || '').trim();
+    const tagIds = Array.isArray(params?.tagIds) ? params!.tagIds!.map(String).filter(Boolean) : [];
+    const q = String(params?.q || '').trim();
+
+    const where: any = {};
+    // folderId vazio => raiz
+    if (folderId) where.folderId = folderId;
+    else where.folderId = null;
+
+    if (q) {
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { url: { contains: q, mode: 'insensitive' } },
+        { description: { contains: q, mode: 'insensitive' } },
+      ];
     }
+
+    // “tem todas as tags selecionadas”
+    if (tagIds.length) {
+      where.AND = tagIds.map((tid) => ({ tags: { some: { tagId: tid } } }));
+    }
+
+    const rows = await (this.prisma as any).utilityLink.findMany({
+      where,
+      orderBy: [{ orderIndex: 'asc' }, { createdAt: 'desc' }],
+      include: { folder: true, tags: { include: { tag: true } } },
+    });
+
+    return { items: (rows || []).map((r: any) => this.toUtilityDto(r)) };
   }
 
-  const shouldUpdateTags = Array.isArray(body?.tagIds);
-  const nextTagIds = shouldUpdateTags ? (body!.tagIds || []).map(String).filter(Boolean) : null;
+  async createUtility(
+    body: { name: string; url: string; description?: string; folderId?: string; tagIds?: string[] },
+    file?: Express.Multer.File,
+  ) {
+    const name = String(body?.name || '').trim();
+    const url = this.normalizeUrl(body?.url);
+    const description = typeof body?.description === 'string' ? cleanNullableString(body.description) : null;
+    const folderId = String(body?.folderId || '').trim() || null;
+    const tagIds = Array.isArray(body?.tagIds) ? body!.tagIds!.map(String).filter(Boolean) : [];
 
-  const updated = await (this.prisma as any).$transaction(async (tx: any) => {
-    if (shouldUpdateTags) {
-      await tx.utilityLinkTag.deleteMany({ where: { utilityId } });
-      if (nextTagIds!.length) {
-        await tx.utilityLinkTag.createMany({
-          data: nextTagIds!.map((tagId) => ({ utilityId, tagId })),
-          skipDuplicates: true,
+    if (!name) throw new Error('name obrigatório');
+    if (name.length > 80) throw new Error('name muito grande (máx 80)');
+    if (!url) throw new Error('url obrigatório');
+
+    let imageUrl: string | null = null;
+
+    if (file) {
+      const ext = this.safeExtFromMimeOrName(file);
+      if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+      if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
+      fs.mkdirSync(uploadsDir, { recursive: true });
+
+      const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, file.buffer);
+
+      imageUrl = `/uploads/admin/utilities/${filename}`;
+    }
+
+    const max = await (this.prisma as any).utilityLink.aggregate({
+      where: { folderId },
+      _max: { orderIndex: true },
+    });
+    const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+
+    const created = await (this.prisma as any).utilityLink.create({
+      data: {
+        name,
+        url,
+        description,
+        imageUrl,
+        folderId,
+        orderIndex: nextOrder,
+        tags: tagIds.length ? { create: tagIds.map((tagId) => ({ tagId })) } : undefined,
+      },
+      include: { folder: true, tags: { include: { tag: true } } },
+    });
+
+    return this.toUtilityDto(created);
+  }
+
+  async updateUtility(
+    id: string,
+    body: { name?: string; url?: string; description?: string; folderId?: string; tagIds?: string[] },
+    file?: Express.Multer.File,
+  ) {
+    const utilityId = String(id || '').trim();
+    if (!utilityId) throw new Error('id obrigatório');
+
+    const exists = await (this.prisma as any).utilityLink.findUnique({
+      where: { id: utilityId },
+      include: { tags: true },
+    });
+    if (!exists) throw new Error('Utilidade não encontrada');
+
+    const data: any = {};
+
+    if (typeof body?.name === 'string') {
+      const nm = body.name.trim();
+      if (!nm) throw new Error('name obrigatório');
+      if (nm.length > 80) throw new Error('name muito grande (máx 80)');
+      data.name = nm;
+    }
+
+    if (typeof body?.url === 'string') {
+      const u = this.normalizeUrl(body.url);
+      if (!u) throw new Error('url obrigatório');
+      data.url = u;
+    }
+
+    if (typeof body?.description === 'string') data.description = cleanNullableString(body.description);
+
+    // mover pasta: joga pro final do destino
+    if (typeof body?.folderId === 'string') {
+      const newFolderId = body.folderId.trim() || null;
+      const oldFolderId = exists.folderId ?? null;
+
+      if (newFolderId !== oldFolderId) {
+        const max = await (this.prisma as any).utilityLink.aggregate({
+          where: { folderId: newFolderId },
+          _max: { orderIndex: true },
         });
+        data.folderId = newFolderId;
+        data.orderIndex = Number(max?._max?.orderIndex ?? 0) + 1;
       }
     }
 
-    return await tx.utilityLink.update({
-      where: { id: utilityId },
-      data,
-      include: { folder: true, tags: { include: { tag: true } } },
+    // substituir imagem
+    if (file) {
+      const ext = this.safeExtFromMimeOrName(file);
+      if (!ext) throw new Error('Arquivo inválido. Envie png/jpg/jpeg/webp.');
+      if (Number(file.size || 0) > 5 * 1024 * 1024) throw new Error('Arquivo muito grande. Limite: 5MB.');
+
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'admin', 'utilities');
+      fs.mkdirSync(uploadsDir, { recursive: true });
+
+      const filename = `utility_${Date.now()}_${Math.random().toString(16).slice(2)}${ext}`;
+      const filepath = path.join(uploadsDir, filename);
+      fs.writeFileSync(filepath, file.buffer);
+
+      data.imageUrl = `/uploads/admin/utilities/${filename}`;
+
+      const oldImg = String(exists.imageUrl || '').trim();
+      if (oldImg && oldImg.startsWith('/uploads/')) {
+        const rel = oldImg.replace(/^\/uploads\//, '');
+        const full = path.join(process.cwd(), 'uploads', rel);
+        try {
+          if (fs.existsSync(full)) fs.unlinkSync(full);
+        } catch {}
+      }
+    }
+
+    const shouldUpdateTags = Array.isArray(body?.tagIds);
+    const nextTagIds = shouldUpdateTags ? (body!.tagIds || []).map(String).filter(Boolean) : null;
+
+    const updated = await (this.prisma as any).$transaction(async (tx: any) => {
+      if (shouldUpdateTags) {
+        await tx.utilityLinkTag.deleteMany({ where: { utilityId } });
+        if (nextTagIds!.length) {
+          await tx.utilityLinkTag.createMany({
+            data: nextTagIds!.map((tagId) => ({ utilityId, tagId })),
+            skipDuplicates: true,
+          });
+        }
+      }
+
+      return await tx.utilityLink.update({
+        where: { id: utilityId },
+        data,
+        include: { folder: true, tags: { include: { tag: true } } },
+      });
     });
-  });
 
-  return this.toUtilityDto(updated);
-}
-
-async deleteUtility(id: string) {
-  const utilityId = String(id || '').trim();
-  if (!utilityId) throw new Error('id obrigatório');
-
-  const exists = await (this.prisma as any).utilityLink.findUnique({
-    where: { id: utilityId },
-    select: { id: true, imageUrl: true },
-  });
-  if (!exists) throw new Error('Utilidade não encontrada');
-
-  const img = String(exists.imageUrl || '').trim();
-  if (img && img.startsWith('/uploads/')) {
-    const rel = img.replace(/^\/uploads\//, '');
-    const full = path.join(process.cwd(), 'uploads', rel);
-    try { if (fs.existsSync(full)) fs.unlinkSync(full); } catch {}
+    return this.toUtilityDto(updated);
   }
 
-  await (this.prisma as any).utilityLinkTag.deleteMany({ where: { utilityId } });
-  await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
+  async deleteUtility(id: string) {
+    const utilityId = String(id || '').trim();
+    if (!utilityId) throw new Error('id obrigatório');
 
-  return { ok: true };
-}
+    const exists = await (this.prisma as any).utilityLink.findUnique({
+      where: { id: utilityId },
+      select: { id: true, imageUrl: true },
+    });
+    if (!exists) throw new Error('Utilidade não encontrada');
 
-async reorderUtilities(orderedIds: string[]) {
-  const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
-  if (!ids.length) return { ok: true };
+    const img = String(exists.imageUrl || '').trim();
+    if (img && img.startsWith('/uploads/')) {
+      const rel = img.replace(/^\/uploads\//, '');
+      const full = path.join(process.cwd(), 'uploads', rel);
+      try {
+        if (fs.existsSync(full)) fs.unlinkSync(full);
+      } catch {}
+    }
 
-  const rows = await (this.prisma as any).utilityLink.findMany({
-    where: { id: { in: ids } },
-    select: { id: true, folderId: true },
-  });
-  if (!rows.length) return { ok: true };
+    await (this.prisma as any).utilityLinkTag.deleteMany({ where: { utilityId } });
+    await (this.prisma as any).utilityLink.delete({ where: { id: utilityId } });
 
-  const folderKey = String(rows[0].folderId ?? '');
-  const mixed = rows.some((r: any) => String(r.folderId ?? '') !== folderKey);
-  if (mixed) throw new Error('Reordenação inválida: itens de pastas diferentes');
+    return { ok: true };
+  }
 
-  await (this.prisma as any).$transaction(
-    ids.map((uid, idx) =>
-      (this.prisma as any).utilityLink.update({
-        where: { id: uid },
-        data: { orderIndex: idx + 1 },
-        select: { id: true },
-      }),
-    ),
-  );
+  async reorderUtilities(orderedIds: string[]) {
+    const ids = Array.isArray(orderedIds) ? orderedIds.map(String).filter(Boolean) : [];
+    if (!ids.length) return { ok: true };
 
-  return { ok: true };
-}
+    const rows = await (this.prisma as any).utilityLink.findMany({
+      where: { id: { in: ids } },
+      select: { id: true, folderId: true },
+    });
+    if (!rows.length) return { ok: true };
 
-async moveUtility(id: string, folderId: string | null) {
-  const utilityId = String(id || '').trim();
-  if (!utilityId) throw new Error('id obrigatório');
+    const folderKey = String(rows[0].folderId ?? '');
+    const mixed = rows.some((r: any) => String(r.folderId ?? '') !== folderKey);
+    if (mixed) throw new Error('Reordenação inválida: itens de pastas diferentes');
 
-  const newFolderId = folderId ? String(folderId).trim() : null;
+    await (this.prisma as any).$transaction(
+      ids.map((uid, idx) =>
+        (this.prisma as any).utilityLink.update({
+          where: { id: uid },
+          data: { orderIndex: idx + 1 },
+          select: { id: true },
+        }),
+      ),
+    );
 
-  const max = await (this.prisma as any).utilityLink.aggregate({
-    where: { folderId: newFolderId },
-    _max: { orderIndex: true },
-  });
-  const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+    return { ok: true };
+  }
 
-  const updated = await (this.prisma as any).utilityLink.update({
-    where: { id: utilityId },
-    data: { folderId: newFolderId, orderIndex: nextOrder },
-    include: { folder: true, tags: { include: { tag: true } } },
-  });
+  async moveUtility(id: string, folderId: string | null) {
+    const utilityId = String(id || '').trim();
+    if (!utilityId) throw new Error('id obrigatório');
 
-  return this.toUtilityDto(updated);
-}
+    const newFolderId = folderId ? String(folderId).trim() : null;
+
+    const max = await (this.prisma as any).utilityLink.aggregate({
+      where: { folderId: newFolderId },
+      _max: { orderIndex: true },
+    });
+    const nextOrder = Number(max?._max?.orderIndex ?? 0) + 1;
+
+    const updated = await (this.prisma as any).utilityLink.update({
+      where: { id: utilityId },
+      data: { folderId: newFolderId, orderIndex: nextOrder },
+      include: { folder: true, tags: { include: { tag: true } } },
+    });
+
+    return this.toUtilityDto(updated);
+  }
 }
