@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { getToken } from '@/lib/auth';
 import { apiFetch } from '@/lib/api';
 import Link from 'next/link';
+import ExpertShell from '@/components/ExpertShell';
 
 function cx(...c: Array<string | false | null | undefined>) {
   return c.filter(Boolean).join(' ');
@@ -16,6 +17,9 @@ type ExpertProfile = {
   // ✅ do Prisma/User (backend)
   whatsappBlastEnabled?: boolean;
   whatsappBlastIframeUrl?: string | null;
+
+  // ✅ extras (para manter o ExpertShell com avatar etc, se vier do /expert/me)
+  photoUrl?: string | null;
 };
 
 function normalizeUrl(u?: string | null) {
@@ -81,108 +85,110 @@ export default function DisparoWhatsAppPage() {
   }, []);
 
   return (
-    <div className="min-h-[calc(100vh-120px)]">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <div className="text-white/92 font-semibold tracking-tight text-xl">Disparo WhatsApp</div>
-          <div className="text-white/45 text-sm mt-1">Abra sua ferramenta de disparo configurada pelo admin.</div>
-        </div>
-
-        {iframeUrl ? (
-          <a
-            href={iframeUrl}
-            target="_blank"
-            rel="noreferrer"
-            className={cx(
-              'h-10 px-4 rounded-xl border border-white/10',
-              'bg-white/[0.03] hover:bg-white/[0.06] transition',
-              'text-white/85 text-sm font-medium inline-flex items-center gap-2',
-            )}
-            title="Abrir em nova aba"
-          >
-            Abrir em nova aba
-          </a>
-        ) : null}
-      </div>
-
-      {err ? (
-        <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
-      ) : null}
-
-      {/* estado: carregando */}
-      {loading ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-white/60">Carregando…</div>
-      ) : null}
-
-      {/* estado: desabilitado / não configurado */}
-      {!loading && (!enabled || !iframeUrl) ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
-          <div className="text-white/85 font-semibold">Disparo não configurado</div>
-
-          {!enabled ? (
-            <div className="mt-2 text-white/55 text-sm">
-              O admin desativou o disparo de WhatsApp para este expert.
-            </div>
-          ) : (
-            <div className="mt-2 text-white/55 text-sm">
-              Falta configurar a URL do iframe do disparo (no painel admin).
-            </div>
-          )}
-
-          <div className="mt-4 text-white/45 text-sm">
-            Se isso estiver errado, peça ao admin para preencher:
-            <span className="text-white/75"> whatsappBlastEnabled </span>e<span className="text-white/75"> whatsappBlastIframeUrl</span>.
+    <ExpertShell me={profile as any}>
+      <div className="min-h-[calc(100vh-120px)]">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <div className="text-white/92 font-semibold tracking-tight text-xl">Disparo WhatsApp</div>
+            <div className="text-white/45 text-sm mt-1">Abra sua ferramenta de disparo configurada pelo admin.</div>
           </div>
 
-          <div className="mt-4">
-            <Link
-              href="/leads"
-              className={cx(
-                'inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-white/10',
-                'bg-white/[0.03] hover:bg-white/[0.06] transition',
-                'text-white/85 text-sm font-medium',
-              )}
-            >
-              Ir para Leads
-            </Link>
-          </div>
-        </div>
-      ) : null}
-
-      {/* estado: ok */}
-      {!loading && enabled && iframeUrl ? (
-        <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
-            <div className="text-white/80 text-sm">
-              Ferramenta carregada via iframe • Se não abrir, use “Abrir em nova aba”.
-            </div>
+          {iframeUrl ? (
             <a
               href={iframeUrl}
               target="_blank"
               rel="noreferrer"
               className={cx(
-                'h-9 px-3 rounded-xl border border-white/10',
+                'h-10 px-4 rounded-xl border border-white/10',
                 'bg-white/[0.03] hover:bg-white/[0.06] transition',
-                'text-white/80 text-xs font-medium',
+                'text-white/85 text-sm font-medium inline-flex items-center gap-2',
               )}
+              title="Abrir em nova aba"
             >
               Abrir em nova aba
             </a>
-          </div>
-
-          <div className="relative w-full" style={{ height: 'calc(100vh - 260px)' }}>
-            <iframe
-              src={iframeUrl}
-              className="absolute inset-0 h-full w-full"
-              // ✅ permissões mais “tranquilas” pra ferramentas web (ajuste se necessário)
-              sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads"
-              allow="clipboard-read; clipboard-write"
-              referrerPolicy="no-referrer"
-              title="Disparo WhatsApp"
-            />
-          </div>
+          ) : null}
         </div>
-      ) : null}
-    </div>
+
+        {err ? (
+          <div className="mt-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-red-200">{err}</div>
+        ) : null}
+
+        {/* estado: carregando */}
+        {loading ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-5 text-white/60">Carregando…</div>
+        ) : null}
+
+        {/* estado: desabilitado / não configurado */}
+        {!loading && (!enabled || !iframeUrl) ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] p-6">
+            <div className="text-white/85 font-semibold">Disparo não configurado</div>
+
+            {!enabled ? (
+              <div className="mt-2 text-white/55 text-sm">
+                O admin desativou o disparo de WhatsApp para este expert.
+              </div>
+            ) : (
+              <div className="mt-2 text-white/55 text-sm">
+                Falta configurar a URL do iframe do disparo (no painel admin).
+              </div>
+            )}
+
+            <div className="mt-4 text-white/45 text-sm">
+              Se isso estiver errado, peça ao admin para preencher:
+              <span className="text-white/75"> whatsappBlastEnabled </span>e<span className="text-white/75"> whatsappBlastIframeUrl</span>.
+            </div>
+
+            <div className="mt-4">
+              <Link
+                href="/leads"
+                className={cx(
+                  'inline-flex items-center gap-2 h-10 px-4 rounded-xl border border-white/10',
+                  'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                  'text-white/85 text-sm font-medium',
+                )}
+              >
+                Ir para Leads
+              </Link>
+            </div>
+          </div>
+        ) : null}
+
+        {/* estado: ok */}
+        {!loading && enabled && iframeUrl ? (
+          <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.02] overflow-hidden">
+            <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between gap-3 flex-wrap">
+              <div className="text-white/80 text-sm">
+                Ferramenta carregada via iframe • Se não abrir, use “Abrir em nova aba”.
+              </div>
+              <a
+                href={iframeUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={cx(
+                  'h-9 px-3 rounded-xl border border-white/10',
+                  'bg-white/[0.03] hover:bg-white/[0.06] transition',
+                  'text-white/80 text-xs font-medium',
+                )}
+              >
+                Abrir em nova aba
+              </a>
+            </div>
+
+            <div className="relative w-full" style={{ height: 'calc(100vh - 260px)' }}>
+              <iframe
+                src={iframeUrl}
+                className="absolute inset-0 h-full w-full"
+                // ✅ permissões mais “tranquilas” pra ferramentas web (ajuste se necessário)
+                sandbox="allow-forms allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads"
+                allow="clipboard-read; clipboard-write"
+                referrerPolicy="no-referrer"
+                title="Disparo WhatsApp"
+              />
+            </div>
+          </div>
+        ) : null}
+      </div>
+    </ExpertShell>
   );
 }
