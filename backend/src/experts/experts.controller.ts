@@ -39,7 +39,13 @@ export class ExpertsController {
   async me(@Req() req: any, @Query('from') from?: string, @Query('to') to?: string) {
     try {
       const expertId = req.user?.userId;
-      return await this.expertsService.getExpertOverview(expertId, { from, to });
+
+      // ✅ FIX: /expert/me deve devolver o PERFIL do expert (inclui whatsappBlastEnabled/whatsappBlastIframeUrl)
+      // Mantive from/to na assinatura só pra não quebrar quem chama com query, mas aqui não é usado.
+      void from;
+      void to;
+
+      return await this.expertsService.getExpertProfile(expertId);
     } catch (e: any) {
       throw new BadRequestException(e?.message || 'Invalid request');
     }

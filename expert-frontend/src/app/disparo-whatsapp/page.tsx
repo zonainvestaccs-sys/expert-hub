@@ -48,13 +48,19 @@ export default function DisparoWhatsAppPage() {
       setErr('');
 
       try {
-        // ✅ tenta endpoint mais provável
+        // ✅ agora /expert/me deve devolver o perfil (corrigido no backend)
         let me: any = null;
+
         try {
-          me = await apiFetch<ExpertProfile>(`/expert/profile?ts=${Date.now()}`, { token });
-        } catch {
-          // ✅ fallback comum em alguns projetos
           me = await apiFetch<ExpertProfile>(`/expert/me?ts=${Date.now()}`, { token });
+        } catch {
+          // ✅ fallback caso algum ambiente ainda esteja com /me diferente
+          try {
+            me = await apiFetch<ExpertProfile>(`/expert/profile?ts=${Date.now()}`, { token });
+          } catch {
+            // ✅ fallback comum em alguns projetos
+            me = await apiFetch<ExpertProfile>(`/expert/me?ts=${Date.now()}`, { token });
+          }
         }
 
         if (!alive) return;
