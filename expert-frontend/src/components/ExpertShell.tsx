@@ -211,6 +211,9 @@ function ExpertShellInner({
   children,
 }: {
   me: {
+    // ✅ adicionado id opcional (não quebra nada)
+    id?: string;
+
     email?: string;
     photoUrl?: string | null;
 
@@ -223,7 +226,49 @@ function ExpertShellInner({
   const pathname = usePathname();
   const router = useRouter();
 
-  const showWhatsappBlast = useMemo(() => canAccessWhatsappBlast(me), [me]);
+  // ✅ NOVO: estado interno para enriquecer "me" via /expert/me
+  const [meState, setMeState] = useState(me);
+
+  // mantém sincronizado quando o parent troca o "me"
+  useEffect(() => {
+    setMeState(me);
+  }, [me]);
+
+  // ✅ NOVO: se o "me" veio de /auth/me, ele NÃO tem whatsappBlastEnabled/whatsappBlastIframeUrl
+  // então buscamos /expert/me aqui, de forma silenciosa, só pra habilitar o menu.
+  useEffect(() => {
+    if (!meState) return;
+
+    const hasEnabled = meState.whatsappBlastEnabled !== undefined;
+    const hasUrl = meState.whatsappBlastIframeUrl !== undefined;
+
+    // se já veio tudo, não faz nada
+    if (hasEnabled && hasUrl) return;
+
+    const token = getToken();
+    if (!token) return;
+
+    let alive = true;
+
+    (async () => {
+      try {
+        const extra = await apiFetch<any>(`/expert/me?ts=${Date.now()}`, { token });
+        if (!alive) return;
+
+        // merge sem apagar nada que já existe
+        setMeState((prev) => ({ ...(prev || {}), ...(extra || {}) }));
+      } catch {
+        // silencioso: não quebra UI
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
+    // deps: quando trocar usuário (id/email) ou quando esses campos estiverem ausentes
+  }, [meState?.id, meState?.email, meState?.whatsappBlastEnabled, meState?.whatsappBlastIframeUrl]);
+
+  const showWhatsappBlast = useMemo(() => canAccessWhatsappBlast(meState), [meState]);
 
   const nav = useMemo(() => {
     const base = [
@@ -240,7 +285,7 @@ function ExpertShellInner({
     return base;
   }, [showWhatsappBlast]);
 
-  const photoSrc = resolvePhotoUrl(me?.photoUrl);
+  const photoSrc = resolvePhotoUrl(meState?.photoUrl);
 
   const topbarLabel =
     pathname === '/leads' || pathname.startsWith('/leads/')
@@ -1007,7 +1052,7 @@ function ExpertShellInner({
 
                   {/* User */}
                   <div className="hidden md:block text-right min-w-0">
-                    <div className="text-white/80 text-sm font-medium truncate max-w-[360px] zi-sensitive">{me?.email ?? ''}</div>
+                    <div className="text-white/80 text-sm font-medium truncate max-w-[360px] zi-sensitive">{meState?.email ?? ''}</div>
                     <div className="text-white/45 text-xs flex items-center justify-end gap-2">
                       <span>Conta Expert</span>
                       <span className="text-white/25">•</span>
@@ -1031,7 +1076,7 @@ function ExpertShellInner({
                       />
                     ) : (
                       <div className="h-9 w-9 rounded-2xl border border-white/10 bg-white/[0.03] grid place-items-center text-white/85 text-xs font-semibold hover:bg-white/[0.06] hover:border-white/20 transition">
-                        {initials(me?.email)}
+                        {initials(meState?.email)}
                       </div>
                     )}
                   </Link>
@@ -1129,6 +1174,9 @@ export default function ExpertShell({
   children,
 }: {
   me: {
+    // ✅ adicionado id opcional (não quebra nada)
+    id?: string;
+
     email?: string;
     photoUrl?: string | null;
 

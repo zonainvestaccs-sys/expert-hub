@@ -59,3 +59,23 @@ export async function fetchMe(token?: string | null): Promise<Me> {
     token: t,
   });
 }
+
+/* =========================================================
+ * ✅ NOVO: ExpertMe + fetchExpertMe (não quebra /auth/me)
+ * ========================================================= */
+
+export type ExpertMe = Me & {
+  whatsappBlastEnabled?: boolean;
+  whatsappBlastIframeUrl?: string | null;
+};
+
+export async function fetchExpertMe(token?: string | null): Promise<ExpertMe> {
+  const t = token ?? getToken();
+  if (!t) throw { statusCode: 401, message: 'Sem token' };
+
+  // ✅ endpoint do ExpertController que você já criou
+  return apiFetch<ExpertMe>(`/expert/me?ts=${Date.now()}`, {
+    method: 'GET',
+    token: t,
+  });
+}
